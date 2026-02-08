@@ -109,6 +109,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (!pb || pb.steps.length === 0) return;
     setPlaybook(pb);
     setCurrentStepIndex(0);
+    if (playbookId === 'NOVA_TRANSACAO') {
+      window.dispatchEvent(new CustomEvent('fluxia-tour-open-drawer', { detail: { drawer: 'transaction' } }));
+    }
   }, []);
 
   const next = useCallback(() => {
@@ -253,60 +256,56 @@ function TourOverlay({
       aria-modal
       aria-label={`Guia: ${step.title}`}
     >
-      {/* Camada 1: blur apenas no fundo (máscara igual à camada 2 - hole no spotlight) */}
-      <div
-        className="absolute inset-0 backdrop-blur-md pointer-events-none"
-        aria-hidden
-        style={
-          spotlightRect
-            ? {
-                WebkitMaskImage: `radial-gradient(ellipse ${spotlightRect.w / 2}px ${spotlightRect.h / 2}px at ${spotlightRect.x + spotlightRect.w / 2}px ${spotlightRect.y + spotlightRect.h / 2}px, black 0%, black 99%, white 100%)`,
-                maskImage: `radial-gradient(ellipse ${spotlightRect.w / 2}px ${spotlightRect.h / 2}px at ${spotlightRect.x + spotlightRect.w / 2}px ${spotlightRect.y + spotlightRect.h / 2}px, black 0%, black 99%, white 100%)`,
-              }
-            : undefined
-        }
-      />
-      {/* Camada 2: escurecimento com máscara; sem blur para modal e spotlight nítidos */}
-      <div
-        className="absolute inset-0 bg-black/70 pointer-events-auto"
-        style={
-          spotlightRect
-            ? {
-                WebkitMaskImage: `radial-gradient(ellipse ${spotlightRect.w / 2}px ${spotlightRect.h / 2}px at ${spotlightRect.x + spotlightRect.w / 2}px ${spotlightRect.y + spotlightRect.h / 2}px, black 0%, black 99%, white 100%)`,
-                maskImage: `radial-gradient(ellipse ${spotlightRect.w / 2}px ${spotlightRect.h / 2}px at ${spotlightRect.x + spotlightRect.w / 2}px ${spotlightRect.y + spotlightRect.h / 2}px, black 0%, black 99%, white 100%)`,
-              }
-            : undefined
-        }
-        onClick={onExit}
-      />
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
-        <defs>
-          <mask id="fluxia-spotlight-mask">
-            <rect width="100%" height="100%" fill="white" />
-            {spotlightRect && (
-              <rect
-                x={spotlightRect.x}
-                y={spotlightRect.y}
-                width={spotlightRect.w}
-                height={spotlightRect.h}
-                rx="12"
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          width="100%"
-          height="100%"
-          fill="black"
-          fillOpacity="0.5"
-          mask="url(#fluxia-spotlight-mask)"
+      {/* Quadro em 4 painéis — deixa buraco real no centro, campo sempre visível */}
+      {spotlightRect ? (
+        <>
+          <div
+            className="absolute top-0 left-0 right-0 backdrop-blur-md bg-black/60 pointer-events-none"
+            style={{ height: Math.max(0, spotlightRect.y) }}
+          />
+          <div
+            className="absolute left-0 backdrop-blur-md bg-black/60 pointer-events-none"
+            style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
+          />
+          <div
+            className="absolute backdrop-blur-md bg-black/60 pointer-events-none"
+            style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 backdrop-blur-md bg-black/60 pointer-events-none"
+            style={{ top: spotlightRect.y + spotlightRect.h }}
+          />
+          <div
+            className="absolute top-0 left-0 right-0 bg-black/70 pointer-events-auto"
+            style={{ height: Math.max(0, spotlightRect.y) }}
+            onClick={onExit}
+          />
+          <div
+            className="absolute left-0 bg-black/70 pointer-events-auto"
+            style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
+            onClick={onExit}
+          />
+          <div
+            className="absolute bg-black/70 pointer-events-auto"
+            style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
+            onClick={onExit}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-black/70 pointer-events-auto"
+            style={{ top: spotlightRect.y + spotlightRect.h }}
+            onClick={onExit}
+          />
+        </>
+      ) : (
+        <div
+          className="absolute inset-0 bg-black/70 backdrop-blur-md pointer-events-auto"
+          onClick={onExit}
         />
-      </svg>
+      )}
 
       {spotlightRect && (
         <div
-          className="absolute pointer-events-none ring-2 ring-primary ring-offset-2 rounded-xl transition-all duration-200 shadow-[0_0_0_9999px_rgba(0,0,0,0.01)]"
+          className="absolute pointer-events-none ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-xl"
           style={{
             left: spotlightRect.x,
             top: spotlightRect.y,

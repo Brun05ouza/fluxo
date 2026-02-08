@@ -10,7 +10,7 @@ import { AppLayout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Transactions } from './components/Transactions';
 import { FixedExpenses } from './components/FixedExpenses';
-import { Budgets, Reports, Settings } from './components/Pages';
+import { Budgets, Reports, Settings, Profile } from './components/Pages';
 import { ImportPage } from '@/features/importer/ImportPage';
 import { ImportPreviewPage } from '@/features/importer/ImportPreviewPage';
 import { TransactionDrawer } from './components/TransactionDrawer';
@@ -34,6 +34,12 @@ const AppContent = () => {
 
   const handleAddTransaction = () => setIsDrawerOpen(true);
   const [fluxiaOpen, setFluxiaOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handler = () => setIsDrawerOpen(true);
+    window.addEventListener('fluxia-tour-open-drawer', handler);
+    return () => window.removeEventListener('fluxia-tour-open-drawer', handler);
+  }, []);
 
   const handleSaveTransaction = async (
     tx: Parameters<typeof addTransaction>[0]
@@ -69,7 +75,11 @@ const AppContent = () => {
 
   return (
     <TourProvider>
-      <AppLayout onLogout={handleLogout} onAddTransaction={handleAddTransaction}>
+      <AppLayout
+        onLogout={handleLogout}
+        onAddTransaction={handleAddTransaction}
+        onHelpClick={() => setFluxiaOpen(true)}
+      >
         <Routes>
           <Route
             path="/"
@@ -89,6 +99,7 @@ const AppContent = () => {
           <Route path="/fixed-expenses" element={<FixedExpenses />} />
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -98,7 +109,7 @@ const AppContent = () => {
         onClose={() => setIsDrawerOpen(false)}
         onSave={handleSaveTransaction}
       />
-      <FluxiaButton onClick={() => setFluxiaOpen(true)} hidden={fluxiaOpen} />
+      <FluxiaButton onClick={() => setFluxiaOpen(true)} hidden={fluxiaOpen || isDrawerOpen} />
       <FluxiaDrawer open={fluxiaOpen} onOpenChange={setFluxiaOpen} />
     </TourProvider>
   );

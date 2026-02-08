@@ -15,13 +15,22 @@ import {
   PlusCircle,
   Bell,
   FileText,
-  Upload
+  Upload,
+  User,
+  HelpCircle
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import { FluxoBrand } from './FluxoBrand';
 import { Button, cn } from './ui';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 const getInitials = (name: string | undefined, email: string) => {
   if (name && name.trim()) {
@@ -61,11 +70,13 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, dataTour }
 export const AppLayout = ({ 
   children, 
   onLogout,
-  onAddTransaction
+  onAddTransaction,
+  onHelpClick
 }: { 
   children: React.ReactNode, 
   onLogout: () => void,
-  onAddTransaction: () => void
+  onAddTransaction: () => void,
+  onHelpClick?: () => void
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -204,7 +215,7 @@ export const AppLayout = ({
               <Menu size={24} />
             </button>
             <h1 className="text-xl md:text-2xl font-bold capitalize bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent hidden sm:block">
-              {menuItems.find(i => isActive(i.path))?.label ?? 'Fluxo'}
+              {pathname === '/profile' ? 'Meu Perfil' : menuItems.find(i => isActive(i.path))?.label ?? 'Fluxo'}
             </h1>
           </div>
 
@@ -231,23 +242,43 @@ export const AppLayout = ({
               <Bell size={20} />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-background" />
             </Button>
-            <button
-              onClick={() => navigate('/settings')}
-              className="rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <Avatar className="w-9 h-9 md:w-10 md:h-10 border-2 border-background">
-                <AvatarImage src={user?.user_metadata?.avatar_url as string | undefined} alt="Perfil" />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-blue-500 text-primary-foreground text-sm font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <Avatar className="w-9 h-9 md:w-10 md:h-10 border-2 border-background">
+                    <AvatarImage src={user?.user_metadata?.avatar_url as string | undefined} alt="Perfil" />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-blue-500 text-primary-foreground text-sm font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuItem onClick={() => { navigate('/profile'); }}>
+                  <User size={16} />
+                  Meu Perfil
+                </DropdownMenuItem>
+                {onHelpClick && (
+                  <DropdownMenuItem onClick={onHelpClick}>
+                    <HelpCircle size={16} />
+                    Precisa de Ajuda?
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onLogout} variant="destructive">
+                  <LogOut size={16} />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-          <div className="max-w-7xl mx-auto h-full">
+          <div className="max-w-7xl mx-auto min-h-full pb-24 md:pb-40">
             {children}
           </div>
         </div>

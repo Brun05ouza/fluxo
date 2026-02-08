@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Target,
@@ -14,6 +15,14 @@ import {
   TrendingUp,
   RotateCcw,
   Camera,
+  Moon,
+  Sun,
+  User,
+  ArrowRight,
+  Banknote,
+  DollarSign,
+  Shield,
+  Palette,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,6 +50,7 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from './ThemeProvider';
 import { supabase } from '@/lib/supabase';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -281,17 +291,12 @@ const getInitials = (name: string | undefined, email: string) => {
   return '??';
 };
 
-export const Settings = () => {
+export const Profile = () => {
   const { user, updateProfile } = useAuth();
-  const { profile, loading: profileLoading, upsertProfile } = useFinancialProfile(user?.id);
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
-  const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [payDay, setPayDay] = useState('1');
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [hasFinanceChanges, setHasFinanceChanges] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
   const email = user?.email ?? '';
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
@@ -300,16 +305,6 @@ export const Settings = () => {
   useEffect(() => {
     setFullName(user?.user_metadata?.full_name || '');
   }, [user?.user_metadata?.full_name]);
-
-  useEffect(() => {
-    if (profile) {
-      setMonthlyIncome(profile.monthly_income ? String(profile.monthly_income) : '');
-      setPayDay(String(profile.pay_day || 1));
-    } else if (!profileLoading) {
-      setMonthlyIncome('');
-      setPayDay('1');
-    }
-  }, [profile, profileLoading]);
 
   const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFullName(e.target.value);
@@ -367,57 +362,13 @@ export const Settings = () => {
     }
   };
 
-  const handleFinanceChange = () => {
-    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
-    const day = parseInt(payDay || '1', 10);
-    setHasFinanceChanges(
-      income !== (profile?.monthly_income ?? 0) || day !== (profile?.pay_day ?? 1)
-    );
-  };
-
-  useEffect(() => {
-    handleFinanceChange();
-  }, [monthlyIncome, payDay, profile]);
-
-  const handleSaveFinance = async () => {
-    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
-    const day = Math.min(31, Math.max(1, parseInt(payDay || '1', 10)));
-    setSaving(true);
-    const { error } = await upsertProfile({ monthly_income: income, pay_day: day });
-    setSaving(false);
-    if (error) toast.error(error.message);
-    else {
-      setHasFinanceChanges(false);
-      toast.success('Situação financeira atualizada!');
-    }
-  };
-
-  const handleRestoreAccount = async () => {
-    if (!user?.id) return;
-    setResetting(true);
-    const uid = user.id;
-    const errors: string[] = [];
-    const { error: e1 } = await supabase.from('transactions').delete().eq('user_id', uid);
-    if (e1) errors.push(e1.message);
-    const { error: e2 } = await supabase.from('budgets').delete().eq('user_id', uid);
-    if (e2) errors.push(e2.message);
-    const { error: e3 } = await supabase.from('fixed_expenses').delete().eq('user_id', uid);
-    if (e3) errors.push(e3.message);
-    const { error: e4 } = await supabase.from('financial_profile').delete().eq('id', uid);
-    if (e4) errors.push(e4.message);
-    setResetting(false);
-    if (errors.length > 0) {
-      toast.error('Erro ao restaurar: ' + errors.join('; '));
-      return;
-    }
-    toast.success('Conta restaurada! Recarregando...');
-    window.location.reload();
-  };
-
   return (
-    <div className="max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div>
+        <h2 className="text-2xl font-bold">Meu Perfil</h2>
+        <p className="text-foreground/80 mt-1">Personalize suas informações e foto.</p>
+      </div>
       <section className="space-y-6">
-        <h3 className="text-lg font-bold border-b border-border pb-3">Perfil</h3>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8">
           <div className="relative group">
             <Avatar className="w-28 h-28 border-4 border-card ring-2 ring-border shadow-lg">
@@ -465,25 +416,172 @@ export const Settings = () => {
           <Input label="CPF" value={cpf} disabled placeholder="—" />
         </div>
       </section>
+      {hasChanges && (
+        <div className="flex gap-4">
+          <Button className="px-8" onClick={handleSave} loading={saving}>
+            Salvar Alterações
+          </Button>
+          <Button variant="ghost" onClick={handleDiscard} disabled={saving}>
+            Descartar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
-      <section className="space-y-6">
-        <h3 className="text-lg font-bold border-b border-border pb-3">Situação financeira</h3>
-        <p className="text-sm text-muted-foreground">
-          Informe sua renda e o dia que recebe para o cálculo do fluxo de caixa.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Input
-            label="Renda mensal (R$)"
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={monthlyIncome}
-            onChange={(e) => setMonthlyIncome(e.target.value.replace(/[^\d,.]/g, ''))}
-          />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-muted-foreground">Dia que recebe</label>
+export const Settings = () => {
+  const { user } = useAuth();
+  const { profile, loading: profileLoading, upsertProfile } = useFinancialProfile(user?.id);
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [payDay, setPayDay] = useState('1');
+  const [saving, setSaving] = useState(false);
+  const [hasFinanceChanges, setHasFinanceChanges] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (profile !== undefined && profile !== null && !hasInitialized.current) {
+      setMonthlyIncome(profile.monthly_income ? String(profile.monthly_income) : '');
+      setPayDay(String(profile.pay_day || 1));
+      hasInitialized.current = true;
+    } else if (!profileLoading && (profile === null || profile === undefined)) {
+      setMonthlyIncome('');
+      setPayDay('1');
+      hasInitialized.current = false;
+    }
+  }, [profile, profileLoading]);
+
+  const handleFinanceChange = () => {
+    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
+    const day = parseInt(payDay || '1', 10);
+    setHasFinanceChanges(
+      income !== (profile?.monthly_income ?? 0) || day !== (profile?.pay_day ?? 1)
+    );
+  };
+
+  useEffect(() => {
+    handleFinanceChange();
+  }, [monthlyIncome, payDay, profile]);
+
+  const handleSaveFinance = async () => {
+    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
+    const day = Math.min(31, Math.max(1, parseInt(payDay || '1', 10)));
+    setSaving(true);
+    const { error } = await upsertProfile({ monthly_income: income, pay_day: day });
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else {
+      setHasFinanceChanges(false);
+      toast.success(`Salvo! Renda: ${formatCurrency(income)}`);
+    }
+  };
+
+  const handleRestoreAccount = async () => {
+    if (!user?.id) return;
+    setResetting(true);
+    const uid = user.id;
+    const errors: string[] = [];
+    const { error: e1 } = await supabase.from('transactions').delete().eq('user_id', uid);
+    if (e1) errors.push(e1.message);
+    const { error: e2 } = await supabase.from('budgets').delete().eq('user_id', uid);
+    if (e2) errors.push(e2.message);
+    const { error: e3 } = await supabase.from('fixed_expenses').delete().eq('user_id', uid);
+    if (e3) errors.push(e3.message);
+    const { error: e4 } = await supabase.from('financial_profile').delete().eq('id', uid);
+    if (e4) errors.push(e4.message);
+    setResetting(false);
+    if (errors.length > 0) {
+      toast.error('Erro ao restaurar: ' + errors.join('; '));
+      return;
+    }
+    toast.success('Conta restaurada! Recarregando...');
+    window.location.reload();
+  };
+
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  const selectClass = cn(
+    "w-full h-12 px-4 text-base bg-background text-foreground border border-border rounded-xl",
+    "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
+    "transition-colors hover:border-foreground/30 cursor-pointer"
+  );
+
+  const inputClass = "h-12 px-4 text-base rounded-xl";
+
+  return (
+    <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div>
+        <h2 className="text-2xl font-bold">Configurações</h2>
+        <p className="text-foreground/80 mt-1">Ajustes do site e preferências.</p>
+      </div>
+
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <User size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Perfil</h3>
+            <p className="text-sm text-foreground/80">
+              Edite seu nome, foto e dados pessoais.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/profile')}>
+          <User size={18} />
+          Editar Meu Perfil
+          <ArrowRight size={16} />
+        </Button>
+      </Card>
+
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <Palette size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Aparência</h3>
+            <p className="text-sm text-foreground/80">
+              Alterne entre tema claro e escuro.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={toggleTheme}>
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+        </Button>
+      </Card>
+
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <Banknote size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Situação financeira</h3>
+            <p className="text-sm text-foreground/80">
+              Informe sua renda e o dia que recebe para o cálculo do fluxo de caixa.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 items-end">
+          <div className="space-y-2 flex flex-col items-center sm:items-stretch">
+            <label className="text-sm font-medium text-foreground/90 w-full text-center sm:text-left">Renda mensal</label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder="Ex: 2750"
+              value={monthlyIncome}
+              onChange={(e) => setMonthlyIncome(e.target.value.replace(/[^\d,.]/g, ''))}
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-2 flex flex-col items-center sm:items-stretch">
+            <label className="text-sm font-medium text-foreground/90 w-full text-center sm:text-left">Dia que recebe</label>
             <select
-              className="w-full h-11 px-3 bg-background border border-border rounded-[var(--radius)]"
+              className={cn(selectClass, "text-center sm:text-left")}
               value={payDay}
               onChange={(e) => setPayDay(e.target.value)}
             >
@@ -496,50 +594,70 @@ export const Settings = () => {
           </div>
         </div>
         {hasFinanceChanges && (
-          <Button onClick={handleSaveFinance} loading={saving}>
-            Salvar situação financeira
-          </Button>
+          <div className="flex justify-center pt-2">
+            <Button onClick={handleSaveFinance} loading={saving}>
+              Salvar situação financeira
+            </Button>
+          </div>
         )}
-      </section>
+      </Card>
 
-      <section className="space-y-6">
-        <h3 className="text-lg font-bold border-b border-border pb-3">Preferências</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-            <div>
-              <p className="font-semibold">Moeda Principal</p>
-              <p className="text-sm text-muted-foreground">
-                Defina a moeda padrão para seus relatórios.
-              </p>
-            </div>
-            <select className="bg-muted px-3 py-1.5 rounded-lg text-sm font-medium border border-border">
-              <option>BRL (R$)</option>
-              <option>USD ($)</option>
-              <option>EUR (€)</option>
-            </select>
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <DollarSign size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Preferências</h3>
+            <p className="text-sm text-foreground/80">
+              Defina a moeda padrão para seus relatórios.
+            </p>
           </div>
         </div>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold border-b pb-2">Segurança</h3>
-        <div className="space-y-4">
-          <Button
-            variant="outline"
-            className="w-full justify-between"
-            onClick={() => toast.info('Em breve: alteração de senha via e-mail')}
-          >
-            <span>Alterar Senha</span>
-            <Plus size={16} className="rotate-45" />
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-xl bg-muted/30 border border-border">
+          <span className="font-medium text-foreground text-base">Moeda Principal</span>
+          <select className={cn(selectClass, "sm:min-w-[160px]")}>
+            <option>BRL (R$)</option>
+            <option>USD ($)</option>
+            <option>EUR (€)</option>
+          </select>
         </div>
-      </section>
+      </Card>
 
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold border-b pb-2 text-destructive">Restaurar conta</h3>
-        <p className="text-sm text-muted-foreground">
-          Remove todos os seus dados do site: transações, orçamentos, contas fixas e perfil financeiro. A conta de acesso permanece.
-        </p>
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <Shield size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Segurança</h3>
+            <p className="text-sm text-foreground/80">
+              Altere sua senha de acesso.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full justify-between h-12 px-4"
+          onClick={() => toast.info('Em breve: alteração de senha via e-mail')}
+        >
+          <span>Alterar Senha</span>
+          <ArrowRight size={16} />
+        </Button>
+      </Card>
+
+      <Card className="space-y-6 border-destructive/30">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive">
+            <RotateCcw size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-destructive">Restaurar conta</h3>
+            <p className="text-sm text-foreground/80">
+              Remove todos os seus dados do site: transações, orçamentos, contas fixas e perfil financeiro. A conta de acesso permanece.
+            </p>
+          </div>
+        </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="gap-2">
@@ -566,18 +684,8 @@ export const Settings = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </section>
+      </Card>
 
-      {hasChanges && (
-        <div className="pt-4 flex gap-4">
-          <Button className="px-8" onClick={handleSave} loading={saving}>
-            Salvar Alterações
-          </Button>
-          <Button variant="ghost" onClick={handleDiscard} disabled={saving}>
-            Descartar
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
@@ -622,19 +730,19 @@ export const Reports = () => {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
         <h2 className="text-2xl font-bold">Relatórios</h2>
-        <p className="text-muted-foreground">
+        <p className="text-foreground/80">
           Visão geral e tendências dos seus gastos.
         </p>
       </div>
 
       {hasMindfulData ? (
         <>
-          <Card className="p-6">
+          <Card className="p-6 [&_.recharts-legend-item-text]:fill-[hsl(var(--foreground))]">
             <div className="flex items-center gap-2 mb-6">
               <Brain size={22} className="text-primary" />
               <h3 className="font-semibold text-lg">Mindful Finance — Distribuição por tipo</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-foreground/80 mb-4">
               Gastos classificados como Essencial, Opcional ou Emocional.
             </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -655,7 +763,17 @@ export const Reports = () => {
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Tooltip
+                        formatter={(v: number) => formatCurrency(v)}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 'var(--radius)',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -665,7 +783,7 @@ export const Reports = () => {
                 {Object.entries(distribution)
                   .filter(([, v]) => v > 0)
                   .map(([key], i) => (
-                    <div key={key} className="flex items-center justify-between">
+                    <div key={key} className="flex items-center justify-between text-foreground">
                       <div className="flex items-center gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
@@ -682,7 +800,7 @@ export const Reports = () => {
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-6 [&_.recharts-legend-item-text]:fill-[hsl(var(--foreground))]">
             <div className="flex items-center gap-2 mb-6">
               <TrendingUp size={22} className="text-primary" />
               <h3 className="font-semibold text-lg">Evolução mensal por tipo</h3>
@@ -691,14 +809,24 @@ export const Reports = () => {
               {evolution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={evolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                     <XAxis
                       dataKey="month"
                       tickFormatter={(v) => v.slice(5)}
-                      tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                      tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
                     />
-                    <YAxis tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    <YAxis tickFormatter={(v) => `R$${v}`} tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }} />
+                    <Tooltip
+                      formatter={(v: number) => formatCurrency(v)}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                      }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
                     <Legend />
                     <Bar dataKey="ESSENTIAL" name="Essencial" fill="#10b981" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="OPTIONAL" name="Opcional" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -706,7 +834,7 @@ export const Reports = () => {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="h-full flex items-center justify-center text-foreground/70">
                   Poucos dados para evolução
                 </div>
               )}
@@ -715,13 +843,13 @@ export const Reports = () => {
         </>
       ) : (
         <Card className="p-12 text-center">
-          <Brain size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <Brain size={48} className="mx-auto mb-4 text-foreground/70" />
           <h3 className="font-semibold text-lg mb-2">Mindful Finance</h3>
-          <p className="text-muted-foreground max-w-md mx-auto mb-4">
+          <p className="text-foreground/85 max-w-md mx-auto mb-4">
             Ao registrar novas despesas, classifique-as como Essencial, Opcional ou Emocional.
             Os relatórios de comportamento financeiro aparecerão aqui.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             Adicione transações e marque o tipo de gasto para começar.
           </p>
         </Card>

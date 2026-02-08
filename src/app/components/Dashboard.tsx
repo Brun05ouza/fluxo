@@ -65,9 +65,42 @@ const itemVariants = {
     opacity: 1,
     transition: {
       type: "spring",
-      stiffness: 100
+      stiffness: 80,
+      damping: 16,
     }
   }
+};
+
+const chartItemVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
+  }
+};
+
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+  formatter,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; payload?: { name?: string; value?: number } }>;
+  label?: string;
+  formatter?: (v: number) => string;
+}) => {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const displayName = (item?.payload as { name?: string })?.name ?? item?.name ?? '';
+  const val = Number(item?.value ?? item?.payload?.value ?? 0);
+  const fmt = formatter ?? ((v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+  return (
+    <div className="px-4 py-3 rounded-lg border border-border bg-card/95 backdrop-blur-sm shadow-lg animate-in fade-in-0 zoom-in-95 duration-200">
+      {label && <p className="text-xs text-foreground/80 mb-1">{label}</p>}
+      <p className="font-semibold text-foreground">{displayName}: {fmt(val)}</p>
+    </div>
+  );
 };
 
 const StatCard = ({ title, value, icon: Icon, trend, colorClass }: any) => (
@@ -384,8 +417,8 @@ export const Dashboard = ({
         </motion.div>
       )}
 
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 space-y-6">
+      <motion.div variants={chartItemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 space-y-6 overflow-hidden">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-lg">Evolução do Saldo</h3>
           </div>
@@ -395,55 +428,52 @@ export const Dashboard = ({
                 <AreaChart data={dataLine}>
                   <defs>
                     <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" strokeOpacity={0.4} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                   <XAxis
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
                     dy={10}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--foreground))' }}
                     tickFormatter={(v) => `R$${v}`}
                     dx={-10}
                   />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--background)',
-                      borderColor: 'var(--border)',
-                      borderRadius: 'var(--radius)',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-                    }}
-                    itemStyle={{ color: 'var(--foreground)' }}
+                    content={<ChartTooltip formatter={(v) => formatCurrency(v)} />}
+                    cursor={{ stroke: 'var(--border)', strokeDasharray: '4 4', strokeOpacity: 0.6 }}
                   />
                   <Area
                     type="monotone"
                     dataKey="saldo"
                     stroke="#10b981"
-                    strokeWidth={3}
+                    strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#colorSaldo)"
-                    animationDuration={2000}
+                    isAnimationActive
+                    animationDuration={1000}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground flex-col gap-2">
-                <LineChart size={32} className="opacity-20" />
+              <div className="h-full flex items-center justify-center text-foreground/70 flex-col gap-2">
+                <LineChart size={32} className="opacity-30" />
                 <p>Adicione transações para ver o gráfico</p>
               </div>
             )}
           </div>
         </Card>
 
-        <Card className="space-y-6">
+        <Card className="space-y-6 overflow-hidden">
           <h3 className="font-bold text-lg">Gastos por Categoria</h3>
           <div className="h-[250px] w-full flex items-center justify-center relative">
             {dataPie.length > 0 ? (
@@ -458,25 +488,21 @@ export const Dashboard = ({
                     paddingAngle={4}
                     dataKey="value"
                     stroke="none"
-                    cornerRadius={4}
+                    cornerRadius={6}
+                    isAnimationActive
+                    animationDuration={700}
+                    animationEasing="ease-out"
                   >
                     {dataPie.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(v: number) => formatCurrency(v)}
-                    contentStyle={{
-                      backgroundColor: 'var(--background)',
-                      borderColor: 'var(--border)',
-                      borderRadius: 'var(--radius)',
-                    }}
-                  />
+                  <Tooltip content={<ChartTooltip formatter={(v) => formatCurrency(v)} />} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center flex-col gap-2 text-muted-foreground">
-                <PieChart size={32} className="opacity-20" />
+              <div className="absolute inset-0 flex items-center justify-center flex-col gap-2 text-foreground/70">
+                <PieChart size={32} className="opacity-30" />
                 <p className="text-sm">Sem dados</p>
               </div>
             )}
@@ -486,9 +512,9 @@ export const Dashboard = ({
               <div key={item.name} className="flex items-center justify-between text-sm group hover:bg-muted/50 p-1.5 rounded-lg transition-colors">
                 <div className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-full ring-2 ring-background" style={{ backgroundColor: item.color }} />
-                  <span className="text-muted-foreground group-hover:text-foreground transition-colors">{item.name}</span>
+                  <span className="text-foreground/90 group-hover:text-foreground transition-colors">{item.name}</span>
                 </div>
-                <span className="font-medium font-mono">{formatCurrency(item.value)}</span>
+                <span className="font-medium font-mono text-foreground">{formatCurrency(item.value)}</span>
               </div>
             ))}
           </div>

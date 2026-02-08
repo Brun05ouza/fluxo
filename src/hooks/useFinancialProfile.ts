@@ -26,15 +26,12 @@ export function useFinancialProfile(userId: string | undefined) {
 
     fetch();
 
-    const poll = setInterval(() => fetch(), 2000);
-
     const channel = supabase
       .channel('financial_profile-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_profile', filter: `id=eq.${userId}` }, fetch)
       .subscribe();
 
     return () => {
-      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [userId]);

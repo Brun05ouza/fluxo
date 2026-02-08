@@ -1,17 +1,32 @@
 import React, { useMemo, useState } from 'react';
 import {
   Search,
-  Filter,
-  Download,
   MoreHorizontal,
-  Edit2,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { Card, Button, Badge, cn } from './ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
+import { TransactionDrawer } from './TransactionDrawer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
 import { getCategoryIcon } from '@/lib/category-icons';
 import { getIncomeTotal, getExpenseTotal } from '@/lib/transaction-utils';
+import type { Transaction } from '@/types/database';
 import { toast } from 'sonner';
 
 const formatCurrency = (v: number) =>
@@ -22,8 +37,11 @@ const formatDate = (d: string) =>
 
 export const Transactions = () => {
   const { user } = useAuth();
-  const { transactions, loading, deleteTransaction } = useTransactions(user?.id);
+  const { transactions, loading, deleteTransaction, updateTransaction } = useTransactions(user?.id);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editTx, setEditTx] = useState<Transaction | null>(null);
 
   const filtered = useMemo(() => {
     if (!searchTerm.trim()) return transactions;
@@ -42,9 +60,32 @@ export const Transactions = () => {
     ? expense / 30
     : 0;
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta transação?')) return;
-    const { error } = await deleteTransaction(id);
+  const handleDeleteClick = (id: string) => setDeleteId(id);
+
+  const handleEditSave = async (tx: {
+    title: string;
+    description: string;
+    category: string;
+    amount: number;
+    date: string;
+    payment_method: string;
+    tags: string[];
+    is_recurring: boolean;
+    spending_type?: 'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL' | null;
+  }) => {
+    if (!editTx) return { error: new Error('Nenhuma transação para editar') };
+    const { error } = await updateTransaction(editTx.id, tx);
+    if (error) return { error };
+    setEditTx(null);
+    return { error: null };
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    const { error } = await deleteTransaction(deleteId);
+    setDeleting(false);
+    setDeleteId(null);
     if (error) toast.error(error.message);
     else toast.success('Transação excluída');
   };
@@ -137,19 +178,34 @@ export const Transactions = () => {
                           {formatCurrency(Math.abs(tx.amount))}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleDelete(tx.id)}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                          <div className="group-hover:hidden">
-                            <MoreHorizontal size={18} className="mx-auto text-muted-foreground" />
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                              >
+                                <MoreHorizontal size={18} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[140px] border-border bg-card">
+                              <DropdownMenuItem
+                                onClick={() => setEditTx(tx)}
+                                className="gap-2 cursor-pointer"
+                              >
+                                <Pencil size={16} />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleDeleteClick(tx.id)}
+                                className="gap-2 cursor-pointer"
+                              >
+                                <Trash2 size={16} />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );
@@ -194,6 +250,35 @@ export const Transactions = () => {
           </p>
         </Card>
       </div>
+
+      <TransactionDrawer
+        isOpen={editTx !== null}
+        onClose={() => setEditTx(null)}
+        onSave={handleEditSave}
+        initialTransaction={editTx}
+      />
+
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent className="border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir transação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              loading={deleting}
+              disabled={deleting}
+            >
+              Excluir
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

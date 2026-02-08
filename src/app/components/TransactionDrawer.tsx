@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -11,6 +11,7 @@ import {
 import { Button, Input, cn } from './ui';
 import { motion, AnimatePresence } from 'motion/react';
 import { CATEGORIES, PAYMENT_METHODS, SPENDING_TYPES } from '@/types/database';
+import type { Transaction } from '@/types/database';
 import { toast } from 'sonner';
 
 interface TransactionDrawerProps {
@@ -27,9 +28,11 @@ interface TransactionDrawerProps {
     is_recurring: boolean;
     spending_type?: 'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL' | null;
   }) => Promise<{ error: Error | null }>;
+  /** Transação para editar — quando definida, o drawer abre em modo edição */
+  initialTransaction?: Transaction | null;
 }
 
-export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawerProps) => {
+export const TransactionDrawer = ({ isOpen, onClose, onSave, initialTransaction }: TransactionDrawerProps) => {
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
@@ -54,6 +57,24 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
     setIsRecurring(false);
     setSpendingType(null);
   };
+
+  useEffect(() => {
+    if (isOpen && initialTransaction) {
+      setType(initialTransaction.amount > 0 ? 'income' : 'expense');
+      const abs = Math.abs(initialTransaction.amount);
+      setAmount(abs % 1 === 0 ? abs.toString() + ',00' : abs.toFixed(2).replace('.', ','));
+      setTitle(initialTransaction.title);
+      setDescription(initialTransaction.description ?? '');
+      setCategory(initialTransaction.category);
+      setDate(initialTransaction.date);
+      setPaymentMethod(initialTransaction.payment_method);
+      setTagsStr(Array.isArray(initialTransaction.tags) ? initialTransaction.tags.join(', ') : '');
+      setIsRecurring(initialTransaction.is_recurring ?? false);
+      setSpendingType((initialTransaction as Transaction & { spending_type?: string }).spending_type ?? null);
+    } else if (isOpen) {
+      reset();
+    }
+  }, [isOpen, initialTransaction?.id]);
 
   const handleSave = async () => {
     const num = parseFloat(amount?.replace(',', '.') || '0');
@@ -86,7 +107,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Transação salva!');
+      toast.success(initialTransaction ? 'Transação atualizada!' : 'Transação salva!');
       reset();
       onClose();
     }
@@ -116,7 +137,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
             className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-card shadow-2xl z-50 flex flex-col"
           >
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold">Nova Transação</h2>
+              <h2 className="text-xl font-bold">{initialTransaction ? 'Editar Transação' : 'Nova Transação'}</h2>
               <button
                 onClick={handleClose}
                 className="p-2 hover:bg-muted rounded-full transition-colors"
@@ -126,7 +147,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              <div className="flex p-1 bg-muted rounded-xl">
+              <div className="flex p-1 bg-muted rounded-xl" data-tour="fluxia-tx-type">
                 <button
                   onClick={() => setType('expense')}
                   className={cn(
@@ -151,7 +172,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                 </button>
               </div>
 
-              <div className="text-center space-y-2">
+              <div className="text-center space-y-2" data-tour="fluxia-tx-valor">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
                   Valor
                 </p>
@@ -179,6 +200,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
               </div>
 
               <div className="space-y-4">
+                <div data-tour="fluxia-tx-descricao">
                 <Input
                   label="Descrição"
                   placeholder="Ex: Supermercado"
@@ -186,14 +208,17 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                   onChange={(e) => setTitle(e.target.value)}
                   icon={<AlignLeft size={18} />}
                 />
+                </div>
+                <div data-tour="fluxia-tx-observacao">
                 <Input
                   label="Observação (opcional)"
                   placeholder="Detalhes..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5" data-tour="fluxia-tx-categoria">
                     <label className="text-sm font-medium text-muted-foreground">
                       Categoria
                     </label>
@@ -215,6 +240,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                       />
                     </div>
                   </div>
+                  <div data-tour="fluxia-tx-data">
                   <Input
                     label="Data"
                     type="date"
@@ -222,9 +248,10 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                     onChange={(e) => setDate(e.target.value)}
                     icon={<Calendar size={18} />}
                   />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-tour="fluxia-tx-pagamento">
                   <label className="text-sm font-medium text-muted-foreground">
                     Forma de Pagamento
                   </label>
@@ -252,7 +279,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                 </div>
 
                 {type === 'expense' && (
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-tour="fluxia-tx-mindful">
                     <label className="text-sm font-medium text-muted-foreground">
                       Tipo de gasto (Mindful)
                     </label>
@@ -278,6 +305,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                   </div>
                 )}
 
+                <div data-tour="fluxia-tx-tags">
                 <Input
                   label="Tags"
                   placeholder="viagem, mercado..."
@@ -285,8 +313,9 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                   onChange={(e) => setTagsStr(e.target.value)}
                   icon={<Tag size={18} />}
                 />
+                </div>
 
-                <label className="flex items-center gap-3 p-4 rounded-[var(--radius)] border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                <label className="flex items-center gap-3 p-4 rounded-[var(--radius)] border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors" data-tour="fluxia-tx-recorrente">
                   <div className="flex-1">
                     <p className="font-medium text-sm">Transação Recorrente</p>
                     <p className="text-xs text-muted-foreground">Repetir mensalmente</p>
@@ -301,7 +330,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
               </div>
             </div>
 
-            <div className="p-6 border-t border-border flex gap-3">
+            <div className="p-6 border-t border-border flex gap-3" data-tour="fluxia-tx-botoes">
               <Button variant="outline" className="flex-1" onClick={handleClose}>
                 Cancelar
               </Button>

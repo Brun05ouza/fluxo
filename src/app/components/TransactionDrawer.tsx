@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, cn } from './ui';
 import { motion, AnimatePresence } from 'motion/react';
-import { CATEGORIES, PAYMENT_METHODS } from '@/types/database';
+import { CATEGORIES, PAYMENT_METHODS, SPENDING_TYPES } from '@/types/database';
 import { toast } from 'sonner';
 
 interface TransactionDrawerProps {
@@ -25,6 +25,7 @@ interface TransactionDrawerProps {
     payment_method: string;
     tags: string[];
     is_recurring: boolean;
+    spending_type?: 'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL' | null;
   }) => Promise<{ error: Error | null }>;
 }
 
@@ -38,6 +39,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
   const [tagsStr, setTagsStr] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [spendingType, setSpendingType] = useState<'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL' | null>(null);
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
@@ -50,6 +52,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
     setPaymentMethod(PAYMENT_METHODS[0]);
     setTagsStr('');
     setIsRecurring(false);
+    setSpendingType(null);
   };
 
   const handleSave = async () => {
@@ -77,6 +80,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
       payment_method: paymentMethod,
       tags,
       is_recurring: isRecurring,
+      spending_type: type === 'expense' ? spendingType : null,
     });
     setSaving(false);
     if (error) {
@@ -246,6 +250,33 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave }: TransactionDrawer
                     />
                   </div>
                 </div>
+
+                {type === 'expense' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Tipo de gasto (Mindful)
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {SPENDING_TYPES.map((st) => (
+                        <button
+                          key={st.value}
+                          type="button"
+                          onClick={() => setSpendingType(spendingType === st.value ? null : st.value)}
+                          className={cn(
+                            'p-3 rounded-lg border text-left transition-all',
+                            spendingType === st.value
+                              ? 'border-primary bg-primary/10 text-primary font-medium'
+                              : 'border-border hover:border-primary/50'
+                          )}
+                        >
+                          <span className="block text-sm font-medium">{st.label}</span>
+                          <span className="block text-xs text-muted-foreground truncate">{st.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Opcional — ajuda nos insights</p>
+                  </div>
+                )}
 
                 <Input
                   label="Tags"

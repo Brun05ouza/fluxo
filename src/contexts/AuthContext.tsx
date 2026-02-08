@@ -10,7 +10,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, metadata?: { fullName: string; cpf: string }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  updateProfile: (data: { fullName?: string }) => Promise<{ error: Error | null }>;
+  updateProfile: (data: { fullName?: string; avatarUrl?: string }) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,10 +66,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error ? new Error(error.message) : null };
   };
 
-  const updateProfile = async (data: { fullName?: string }) => {
-    const { error } = await supabase.auth.updateUser({
-      data: data.fullName ? { full_name: data.fullName } : undefined,
-    });
+  const updateProfile = async (data: { fullName?: string; avatarUrl?: string }) => {
+    const updates: Record<string, string> = {};
+    if (data.fullName !== undefined) updates.full_name = data.fullName;
+    if (data.avatarUrl !== undefined) updates.avatar_url = data.avatarUrl;
+    if (Object.keys(updates).length === 0) return { error: null };
+    const { error } = await supabase.auth.updateUser({ data: updates });
     return { error: error ? new Error(error.message) : null };
   };
 

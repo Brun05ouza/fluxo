@@ -27,11 +27,15 @@ Fluxo/
 │   │   └── AuthContext.tsx # Estado de autenticação
 │   ├── hooks/
 │   │   ├── useBudgets.ts
-│   │   └── useTransactions.ts
+│   │   ├── useTransactions.ts
+│   │   ├── useFinancialProfile.ts
+│   │   ├── useFixedExpenses.ts
+│   │   └── useForecast.ts
 │   ├── lib/                # Utilitários e serviços
 │   │   ├── supabase.ts     # Cliente Supabase
 │   │   ├── category-icons.tsx
 │   │   ├── transaction-utils.ts
+│   │   ├── forecast.ts     # Cálculo de previsão e risco
 │   │   └── validation.ts
 │   ├── styles/             # CSS global
 │   ├── types/

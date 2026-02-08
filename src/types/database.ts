@@ -1,5 +1,14 @@
 export type TransactionType = 'expense' | 'income';
 
+/** Mindful Finance: tipo de gasto (despesas) */
+export type SpendingType = 'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL';
+
+export const SPENDING_TYPES = [
+  { value: 'ESSENTIAL' as const, label: 'Essencial', description: 'Necessário para viver' },
+  { value: 'OPTIONAL' as const, label: 'Opcional', description: 'Conforto, mas não urgente' },
+  { value: 'EMOTIONAL' as const, label: 'Emocional', description: 'Compra por impulso' },
+] as const;
+
 export interface UserProfile {
   id: string;
   nome: string;
@@ -20,6 +29,7 @@ export interface Transaction {
   payment_method: string;
   tags: string[];
   is_recurring: boolean;
+  spending_type?: SpendingType | null;
   created_at: string;
 }
 

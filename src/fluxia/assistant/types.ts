@@ -5,6 +5,8 @@ export type FluxiaIntent =
   | 'VER_RELATORIOS'
   | 'GERENCIAR_CATEGORIAS'
   | 'CONFIGURACOES'
+  | 'ENTENDER_SCORE'
+  | 'ENTENDER_RELATORIO'
   | 'UNKNOWN';
 
 export interface FluxiaResponse {

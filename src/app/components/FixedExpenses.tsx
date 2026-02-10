@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, X, Calendar } from 'lucide-react';
+import { Plus, X, Calendar, FileText } from 'lucide-react';
 import { Card, Button, Input, cn } from './ui';
+import { EmptyState, InlineHint } from './patterns';
+import { emptyStates } from '@/content/microcopy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixedExpenses } from '@/hooks/useFixedExpenses';
 import { CATEGORIES } from '@/types/database';
@@ -177,12 +179,18 @@ export const FixedExpenses = () => {
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhuma obrigação cadastrada. Adicione suas contas fixas.
-            </p>
+            <EmptyState
+              icon={<FileText size={28} />}
+              title={emptyStates.fixedExpenses.title}
+              description={emptyStates.fixedExpenses.description}
+              primaryAction={{ label: emptyStates.fixedExpenses.primaryCta, onClick: () => setShowAdd(true) }}
+            />
           )}
         </Card>
       </div>
+      {activeExpenses.length > 0 && (
+        <InlineHint>{emptyStates.fixedExpenses.hint}</InlineHint>
+      )}
     </div>
   );
 };

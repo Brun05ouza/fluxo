@@ -1,6 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Upload } from 'lucide-react';
 import { Card } from '@/app/components/ui';
+import { EmptyState } from '@/app/components/patterns';
+import { emptyStates, hints } from '@/content/microcopy';
 import { ImportDropzone } from './ui/ImportDropzone';
 import { ImportHelpAccordion } from './ui/ImportHelpAccordion';
 import { runImportPipeline } from './pipeline';
@@ -67,9 +70,36 @@ export const ImportPage = () => {
       <div>
         <h1 className="text-2xl font-bold">Importar extrato</h1>
         <p className="text-muted-foreground mt-1">
-          Veja seu mês em segundos. Você revisa tudo antes de salvar.
+          {hints.importSecurity}
         </p>
       </div>
+
+      {/* Passos: 1) Envie 2) Revise 3) Confirme */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="flex items-center gap-1.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+          {hints.importSteps[0]}
+        </span>
+        <span className="text-muted-foreground">→</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">2</span>
+          {hints.importSteps[1]}
+        </span>
+        <span className="text-muted-foreground">→</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">3</span>
+          {hints.importSteps[2]}
+        </span>
+      </div>
+
+      {state === 'empty' && (
+        <EmptyState
+          icon={<Upload size={28} className="text-muted-foreground" />}
+          title={emptyStates.import.title}
+          description={emptyStates.import.description}
+          primaryAction={{ label: emptyStates.import.retryCta, onClick: handleReset }}
+        />
+      )}
 
       <div data-tour="fluxia-import-dropzone">
         <Card className="p-6 md:p-8">

@@ -1,8 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, FileSearch } from 'lucide-react';
 import { Card, Button, cn } from '@/app/components/ui';
+import { EmptyState } from '@/app/components/patterns';
+import { emptyStates, hints } from '@/content/microcopy';
 import { ImportPreviewTable } from './ui/ImportPreviewTable';
 import { BulkActionsBar } from './ui/BulkActionsBar';
 import type { PreviewTxn } from './types';
@@ -113,27 +115,52 @@ export const ImportPreviewPage = () => {
         ? `Importamos ${txs.length} transações. Ignoramos ${dupCount} duplicadas.`
         : `Importamos ${txs.length} transações.`
     );
-    navigate('/?import=success');
+    navigate('/?import=success&importCount=' + txs.length);
   }, [rows, includeDuplicates, addTransactions, navigate]);
 
   if (stateRows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-muted-foreground mb-4">Nenhum dado para revisar.</p>
-        <Button variant="outline" onClick={() => navigate('/import')}>
-          <ArrowLeft size={18} className="mr-2" />
-          Voltar
-        </Button>
+      <div className="space-y-6">
+        <EmptyState
+          icon={<FileSearch size={28} />}
+          title={emptyStates.importPreview.noData}
+          description="Volte à tela de importação e envie um arquivo CSV ou OFX."
+          primaryAction={{ label: emptyStates.importPreview.backCta, onClick: () => navigate('/import') }}
+        />
       </div>
     );
   }
 
+  const toImport = rows.filter((r) => !r.isDuplicate || includeDuplicates);
+  const totalGastos = toImport.filter((r) => r.amount < 0).reduce((s, r) => s + Math.abs(r.amount), 0);
+  const totalReceitas = toImport.filter((r) => r.amount > 0).reduce((s, r) => s + r.amount, 0);
   const total = rows.length;
   const dupCount = rows.filter((r) => r.isDuplicate).length;
   const withoutCat = rows.filter((r) => r.category === 'Outros').length;
 
+  const formatCurrency = (v: number) =>
+    'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Passos: 2) Revise 3) Confirme */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">1</span>
+          {hints.importSteps[0]}
+        </span>
+        <span className="text-muted-foreground">→</span>
+        <span className="flex items-center gap-1.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+          {hints.importSteps[1]}
+        </span>
+        <span className="text-muted-foreground">→</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">3</span>
+          {hints.importSteps[2]}
+        </span>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Revisar importação</h1>
@@ -146,6 +173,23 @@ export const ImportPreviewPage = () => {
           Voltar
         </Button>
       </div>
+
+      {/* Resumo antes de confirmar */}
+      <Card className="p-5 bg-primary/5 border-primary/20">
+        <h3 className="font-semibold text-lg mb-2">Resumo do extrato</h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          Você vai importar <strong className="text-foreground">{toImport.length} lançamentos</strong>.
+          {totalGastos > 0 && (
+            <> <strong className="text-destructive">{formatCurrency(totalGastos)}</strong> em gastos.</>
+          )}
+          {totalReceitas > 0 && (
+            <> <strong className="text-emerald-600">{formatCurrency(totalReceitas)}</strong> em receitas.</>
+          )}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Revise as categorias na tabela abaixo e clique em &quot;Importar extrato&quot; para confirmar.
+        </p>
+      </Card>
 
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 cursor-pointer">
@@ -193,9 +237,9 @@ export const ImportPreviewPage = () => {
       />
 
       <div className="flex justify-end">
-        <Button onClick={handleConfirm} loading={committing} className="gap-2">
+        <Button onClick={handleConfirm} loading={committing} className="gap-2" data-tour="fluxia-import-confirm">
           <Check size={18} />
-          Confirmar importação
+          Importar extrato
         </Button>
       </div>
     </div>

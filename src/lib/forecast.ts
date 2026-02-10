@@ -11,6 +11,8 @@ export interface CategoryForecast {
   percentUsed: number;
   suggestedDailyLimit: number;
   daysRemaining: number;
+  /** No ritmo atual, quantos dias até estourar o orçamento (null se já estourou ou não estoura) */
+  daysUntilOverflow: number | null;
 }
 
 export interface MonthForecast {
@@ -110,6 +112,11 @@ export function computeForecast(
     const categoryForecastEnd =
       categoryDailyAvg * daysInMonth;
 
+    const daysUntilOverflow =
+      limit > 0 && spent < limit && categoryDailyAvg > 0
+        ? Math.floor(remaining / categoryDailyAvg)
+        : null;
+
     return {
       category: b.category,
       limit,
@@ -119,6 +126,7 @@ export function computeForecast(
       percentUsed,
       suggestedDailyLimit,
       daysRemaining,
+      daysUntilOverflow,
     };
   });
 

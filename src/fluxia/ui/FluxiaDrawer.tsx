@@ -16,10 +16,11 @@ import type { FluxiaMessage, FluxiaResponse } from '../assistant/types';
 const FLUXIA_LOGO = '/flux.ia.png?v=1';
 
 const QUICK_ACTIONS = [
-  { label: 'Importar extrato', intent: 'IMPORT_EXTRATO' },
+  { label: 'Como importar extrato?', intent: 'IMPORT_EXTRATO' },
+  { label: 'Onde estou gastando mais?', intent: 'VER_RELATORIOS' },
+  { label: 'Como criar orçamento?', intent: 'CRIAR_ORCAMENTO' },
   { label: 'Adicionar gasto', intent: 'NOVA_TRANSACAO' },
-  { label: 'Criar orçamento', intent: 'CRIAR_ORCAMENTO' },
-  { label: 'Ver relatórios', intent: 'VER_RELATORIOS' },
+  { label: 'Entender score', intent: 'ENTENDER_SCORE' },
 ] as const;
 
 interface FluxiaDrawerProps {
@@ -85,10 +86,12 @@ export function FluxiaDrawer({ open, onOpenChange }: FluxiaDrawerProps) {
   const handleQuickAction = useCallback(
     (intent: string) => {
       const actions: Record<string, string> = {
-        IMPORT_EXTRATO: 'Como faço para importar o extrato do meu banco?',
-        NOVA_TRANSACAO: 'Como adiciono um gasto manualmente?',
-        CRIAR_ORCAMENTO: 'Como criar orçamento por categoria?',
-        VER_RELATORIOS: 'Onde vejo os relatórios?',
+        IMPORT_EXTRATO: 'Como importar extrato?',
+        NOVA_TRANSACAO: 'Como adiciono um gasto?',
+        CRIAR_ORCAMENTO: 'Como criar orçamento?',
+        VER_RELATORIOS: 'Onde estou gastando mais?',
+        ENTENDER_SCORE: 'Como funciona o score?',
+        ENTENDER_RELATORIO: 'Entender relatório por comportamento',
       };
       const text = actions[intent] ?? intent;
       sendMessage(text);

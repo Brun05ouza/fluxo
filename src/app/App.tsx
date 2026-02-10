@@ -90,15 +90,17 @@ const AppContent = () => {
                 onGoToBudgets={() => navigate('/budgets')}
                 onGoToFixedExpenses={() => navigate('/fixed-expenses')}
                 onGoToReports={() => navigate('/reports')}
+                onGoToImport={() => navigate('/import')}
+                onGuideClick={() => setFluxiaOpen(true)}
               />
             }
           />
-          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/transactions" element={<Transactions onAddTransaction={handleAddTransaction} onGoToImport={() => navigate('/import')} onGuideClick={() => setFluxiaOpen(true)} />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/import/preview" element={<ImportPreviewPage />} />
           <Route path="/fixed-expenses" element={<FixedExpenses />} />
           <Route path="/budgets" element={<Budgets />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/reports" element={<Reports onGoToImport={() => navigate('/import')} onAddTransaction={handleAddTransaction} onGuideClick={() => setFluxiaOpen(true)} />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

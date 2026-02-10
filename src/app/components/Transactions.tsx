@@ -1,11 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Search,
-  MoreHorizontal,
-  Trash2,
-  Pencil,
-} from 'lucide-react';
+import { Search, MoreHorizontal, Trash2, Pencil, Inbox, Copy } from 'lucide-react';
 import { Card, Button, Badge, cn } from './ui';
+import { EmptyState } from './patterns';
+import { emptyStates, labels } from '@/content/microcopy';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
 import { getCategoryIcon } from '@/lib/category-icons';
 import { getIncomeTotal, getExpenseTotal } from '@/lib/transaction-utils';
+import { CATEGORIES } from '@/types/database';
 import type { Transaction } from '@/types/database';
 import { toast } from 'sonner';
 
@@ -35,30 +33,91 @@ const formatCurrency = (v: number) =>
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
-export const Transactions = () => {
+type FilterType = 'all' | 'expense' | 'income';
+type FilterPeriod = 'all' | 'this_month' | 'last_month';
+
+const PERIOD_OPTIONS: { value: FilterPeriod; label: string }[] = [
+  { value: 'all', label: 'Todo período' },
+  { value: 'this_month', label: 'Este mês' },
+  { value: 'last_month', label: 'Mês passado' },
+];
+
+function groupTransactionsByDay(list: Transaction[]): { label: string; items: Transaction[] }[] {
+  const groups: Record<string, Transaction[]> = {};
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  for (const t of list) {
+    const d = t.date;
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(t);
+  }
+  const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  return sortedDates.map((date) => {
+    let label: string;
+    if (date === today) label = 'Hoje';
+    else if (date === yesterday) label = 'Ontem';
+    else
+      label = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+      });
+    return { label, items: groups[date]! };
+  });
+}
+
+interface TransactionsProps {
+  onAddTransaction?: () => void;
+  onGoToImport?: () => void;
+  onGuideClick?: () => void;
+}
+
+export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: TransactionsProps) => {
   const { user } = useAuth();
-  const { transactions, loading, deleteTransaction, updateTransaction } = useTransactions(user?.id);
+  const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions(user?.id);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
 
   const filtered = useMemo(() => {
-    if (!searchTerm.trim()) return transactions;
-    const q = searchTerm.toLowerCase();
-    return transactions.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
-    );
-  }, [transactions, searchTerm]);
+    let list = transactions;
+
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.description ?? '').toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q)
+      );
+    }
+
+    if (filterType === 'expense') list = list.filter((t) => t.amount < 0);
+    if (filterType === 'income') list = list.filter((t) => t.amount > 0);
+
+    if (filterCategory !== 'all') list = list.filter((t) => t.category === filterCategory);
+
+    if (filterPeriod !== 'all') {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const prefixThis = `${y}-${String(m).padStart(2, '0')}`;
+      const [prevY, prevM] = m === 1 ? [y - 1, 12] : [y, m - 1];
+      const prefixLast = `${prevY}-${String(prevM).padStart(2, '0')}`;
+      if (filterPeriod === 'this_month') list = list.filter((t) => t.date.startsWith(prefixThis));
+      if (filterPeriod === 'last_month') list = list.filter((t) => t.date.startsWith(prefixLast));
+    }
+
+    return list;
+  }, [transactions, searchTerm, filterType, filterCategory, filterPeriod]);
 
   const income = getIncomeTotal(filtered);
   const expense = getExpenseTotal(filtered);
   const net = income - expense;
-  const avgDaily = filtered.filter((t) => t.amount < 0).length
-    ? expense / 30
-    : 0;
 
   const handleDeleteClick = (id: string) => setDeleteId(id);
 
@@ -87,8 +146,40 @@ export const Transactions = () => {
     setDeleting(false);
     setDeleteId(null);
     if (error) toast.error(error.message);
-    else toast.success('Transação excluída');
+    else toast.success('Lançamento excluído');
   };
+
+  const handleDuplicate = async (tx: Transaction) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { error } = await addTransaction({
+      title: tx.title,
+      description: tx.description ?? '',
+      category: tx.category,
+      amount: tx.amount,
+      date: today,
+      payment_method: tx.payment_method,
+      tags: tx.tags ?? [],
+      is_recurring: tx.is_recurring,
+      spending_type: (tx as Transaction & { spending_type?: string }).spending_type ?? undefined,
+    });
+    if (error) toast.error(error.message);
+    else toast.success('Lançamento duplicado');
+  };
+
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    filterType !== 'all' ||
+    filterCategory !== 'all' ||
+    filterPeriod !== 'all';
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterType('all');
+    setFilterCategory('all');
+    setFilterPeriod('all');
+  };
+
+  const groupedByDay = useMemo(() => groupTransactionsByDay(filtered), [filtered]);
 
   if (loading) {
     return (
@@ -99,157 +190,194 @@ export const Transactions = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex-1 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-          <div className="relative w-full sm:w-80">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Buscar transação..."
-              className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-[var(--radius)] outline-hidden focus:ring-2 focus:ring-primary/20 transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold">Lançamentos</h2>
+        <p className="text-muted-foreground text-sm">
+          Suas entradas e gastos em ordem cronológica. Use os filtros para encontrar o que precisa.
+        </p>
+      </div>
+
+      {/* Filtros + Busca */}
+      <Card className="p-4 space-y-4">
+        <div className="relative w-full">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por descrição ou categoria..."
+            className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-[var(--radius)] outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className={cn(
+                'px-4 py-2 text-sm font-medium transition-colors',
+                filterType === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'
+              )}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('expense')}
+              className={cn(
+                'px-4 py-2 text-sm font-medium transition-colors',
+                filterType === 'expense' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'
+              )}
+            >
+              Gasto
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('income')}
+              className={cn(
+                'px-4 py-2 text-sm font-medium transition-colors',
+                filterType === 'income' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'
+              )}
+            >
+              Receita
+            </button>
+          </div>
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="h-9 px-3 rounded-lg border border-border bg-background text-sm"
+          >
+            <option value="all">Todas categorias</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterPeriod}
+            onChange={(e) => setFilterPeriod(e.target.value as FilterPeriod)}
+            className="h-9 px-3 rounded-lg border border-border bg-background text-sm"
+          >
+            {PERIOD_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+              {labels.limparFiltros}
+            </Button>
+          )}
+        </div>
+      </Card>
 
-        <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            {filtered.length > 0 ? (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border">
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Transação
-                    </th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Categoria
-                    </th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Data
-                    </th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Pagamento
-                    </th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-                      Valor
-                    </th>
-                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filtered.map((tx) => {
-                    const Icon = getCategoryIcon(tx.category);
-                    const isIncome = tx.amount > 0;
-                    return (
-                      <tr key={tx.id} className="hover:bg-muted/30 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                              <Icon size={18} />
-                            </div>
-                            <span className="font-medium whitespace-nowrap">{tx.title}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="outline" className="font-normal">
-                            {tx.category}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground whitespace-nowrap">
-                          {formatDate(tx.date)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">
-                          {tx.payment_method}
-                        </td>
-                        <td
-                          className={cn(
-                            'px-6 py-4 text-sm font-semibold text-right whitespace-nowrap',
-                            isIncome ? 'text-emerald-500' : 'text-foreground'
-                          )}
+      {/* Lista agrupada por dia */}
+      <div className="space-y-4">
+        {filtered.length > 0 ? (
+          groupedByDay.map((group) => (
+            <div key={group.label} className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                {group.label}
+              </p>
+              {group.items.map((tx) => {
+                const Icon = getCategoryIcon(tx.category);
+                const isIncome = tx.amount > 0;
+                return (
+                  <Card
+                    key={tx.id}
+                    className="p-4 flex items-center gap-4 hover:bg-muted/30 transition-colors"
+                    data-tour="fluxia-transaction-row"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground shrink-0">
+                      <Icon size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{tx.title}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className="font-normal text-[10px] px-1.5 py-0">
+                          {tx.category}
+                        </Badge>
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        'font-semibold tabular-nums shrink-0',
+                        isIncome ? 'text-emerald-500' : 'text-destructive'
+                      )}
+                    >
+                      {isIncome ? '+' : '-'} {formatCurrency(Math.abs(tx.amount))}
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         >
-                          {isIncome ? '+' : '-'}{' '}
-                          {formatCurrency(Math.abs(tx.amount))}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                              >
-                                <MoreHorizontal size={18} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-[140px] border-border bg-card">
-                              <DropdownMenuItem
-                                onClick={() => setEditTx(tx)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Pencil size={16} />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => handleDeleteClick(tx.id)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Trash2 size={16} />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="p-12 text-center text-muted-foreground">
-                Nenhuma transação encontrada
-              </div>
-            )}
-          </div>
-        </Card>
+                          <MoreHorizontal size={18} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-[160px]">
+                        <DropdownMenuItem onClick={() => setEditTx(tx)} className="gap-2">
+                          <Pencil size={16} />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(tx)} className="gap-2">
+                          <Copy size={16} />
+                          Duplicar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => handleDeleteClick(tx.id)}
+                          className="gap-2"
+                        >
+                          <Trash2 size={16} />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Card>
+                );
+              })}
+            </div>
+          ))
+        ) : (
+          <EmptyState
+            icon={<Inbox size={28} />}
+            title={emptyStates.transactions.title}
+            description={transactions.length === 0 ? emptyStates.transactions.description : emptyStates.transactions.filterEmpty}
+            primaryAction={onGoToImport ? { label: emptyStates.transactions.primaryCta, onClick: onGoToImport } : undefined}
+            secondaryAction={onAddTransaction ? { label: emptyStates.transactions.secondaryCta, onClick: onAddTransaction } : undefined}
+            onGuideClick={onGuideClick}
+          />
+        )}
       </div>
 
-      <div className="w-full lg:w-72 space-y-6">
-        <Card className="space-y-4">
-          <h3 className="font-semibold">Resumo do Período</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-sm text-muted-foreground">Entradas</span>
-              <span className="font-semibold text-emerald-500">{formatCurrency(income)}</span>
+      {/* Resumo do período filtrado */}
+      {filtered.length > 0 && (
+        <Card className="p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex gap-6">
+            <div>
+              <p className="text-xs text-muted-foreground">Receitas</p>
+              <p className="font-semibold text-emerald-500">{formatCurrency(income)}</p>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-border">
-              <span className="text-sm text-muted-foreground">Saídas</span>
-              <span className="font-semibold text-destructive">{formatCurrency(expense)}</span>
+            <div>
+              <p className="text-xs text-muted-foreground">Gastos</p>
+              <p className="font-semibold text-destructive">{formatCurrency(expense)}</p>
             </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm font-medium">Total Líquido</span>
-              <span className="font-bold text-primary">{formatCurrency(net)}</span>
+            <div>
+              <p className="text-xs text-muted-foreground">Saldo</p>
+              <p className="font-semibold">{formatCurrency(net)}</p>
             </div>
           </div>
         </Card>
-
-        <Card className="bg-primary/5 border-primary/20 space-y-3">
-          <h4 className="text-sm font-semibold text-primary uppercase tracking-wider">
-            Média Diária
-          </h4>
-          <p className="text-3xl font-bold">{formatCurrency(avgDaily)}</p>
-          <p className="text-xs text-muted-foreground">
-            Com base nos gastos do período.
-          </p>
-        </Card>
-      </div>
+      )}
 
       <TransactionDrawer
         isOpen={editTx !== null}
@@ -261,12 +389,12 @@ export const Transactions = () => {
       <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent className="border-border bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir transação</AlertDialogTitle>
+            <AlertDialogTitle>Excluir lançamento</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+              Tem certeza? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0">
+          <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <Button
               variant="destructive"

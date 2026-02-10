@@ -38,6 +38,8 @@ import {
   Legend,
 } from 'recharts';
 import { Card, Button, ProgressBar, Badge, Input, cn } from './ui';
+import { EmptyState } from './patterns';
+import { emptyStates, labels } from '@/content/microcopy';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import {
   AlertDialog,
@@ -55,8 +57,9 @@ import { supabase } from '@/lib/supabase';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useForecast } from '@/hooks/useForecast';
 import { maskCpf } from '@/lib/validation';
-import { getSpentByCategory, getBudgetProgress } from '@/lib/transaction-utils';
+import { getSpentByCategory, getBudgetProgress, getExpenseTotal } from '@/lib/transaction-utils';
 import {
   getSpendingTypeDistribution,
   getSpendingTypeEvolution,
@@ -82,6 +85,9 @@ export const Budgets = () => {
   const { user } = useAuth();
   const { budgets, loading, addBudget, deleteBudget } = useBudgets(user?.id);
   const { transactions } = useTransactions(user?.id);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const forecast = useForecast(currentMonth, transactions, budgets);
   const [showAdd, setShowAdd] = useState(false);
   const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
   const [newLimit, setNewLimit] = useState('');
@@ -91,7 +97,7 @@ export const Budgets = () => {
   const budgetProgress = getBudgetProgress(budgets, spentByCategory);
   const totalBudgeted = budgets.reduce((s, b) => s + Number(b.limit_amount), 0);
   const totalSpent = Object.values(spentByCategory).reduce((a, b) => a + b, 0);
-  const available = totalBudgeted - totalSpent;
+  const restanteMes = Math.max(0, totalBudgeted - totalSpent);
 
   const handleAddBudget = async () => {
     const limit = parseFloat(newLimit?.replace(',', '.') || '0');
@@ -186,16 +192,16 @@ export const Budgets = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-primary/5 border-primary/20 space-y-2">
-          <p className="text-sm font-medium text-muted-foreground uppercase">Total Orçado</p>
+          <p className="text-sm font-medium text-muted-foreground uppercase">{labels.totalOrcado}</p>
           <h3 className="text-3xl font-bold">{formatCurrency(totalBudgeted)}</h3>
         </Card>
         <Card className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground uppercase">Total Gasto</p>
+          <p className="text-sm font-medium text-muted-foreground uppercase">{labels.totalGasto}</p>
           <h3 className="text-3xl font-bold text-destructive">{formatCurrency(totalSpent)}</h3>
         </Card>
         <Card className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground uppercase">Disponível</p>
-          <h3 className="text-3xl font-bold text-emerald-500">{formatCurrency(available)}</h3>
+          <p className="text-sm font-medium text-muted-foreground uppercase">{labels.restanteDoMes}</p>
+          <h3 className="text-3xl font-bold text-emerald-500">{formatCurrency(restanteMes)}</h3>
         </Card>
       </div>
 
@@ -205,6 +211,9 @@ export const Budgets = () => {
           const percent = budget.percent;
           const isCritical = percent >= 80;
           const isOver = percent >= 100;
+          const catForecast = forecast.byCategory.find((c) => c.category === budget.category);
+          const daysUntilOverflow = catForecast?.daysUntilOverflow ?? null;
+          const suggestedDaily = catForecast?.suggestedDailyLimit ?? 0;
 
           return (
             <Card key={budget.id} className="space-y-4">
@@ -229,11 +238,15 @@ export const Budgets = () => {
                   <X size={18} />
                 </Button>
               </div>
-              <div className="space-y-2">
-                <p className="font-bold text-lg">{formatCurrency(budget.spent)}</p>
-                <p className="text-xs text-muted-foreground">
-                  restam {formatCurrency(budget.limit - budget.spent)}
-                </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase">{labels.usado}</p>
+                  <p className="font-bold text-lg">{formatCurrency(budget.spent)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase">{labels.restante}</p>
+                  <p className="font-bold text-lg text-emerald-600 dark:text-emerald-400">{formatCurrency(Math.max(0, budget.limit - budget.spent))}</p>
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-medium">
@@ -251,6 +264,14 @@ export const Budgets = () => {
                   color={isOver ? 'destructive' : isCritical ? 'warning' : 'primary'}
                 />
               </div>
+              {daysUntilOverflow !== null && daysUntilOverflow <= (catForecast?.daysRemaining ?? 31) && !isOver && (
+                <div className="p-3 rounded-lg text-sm bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                  <p className="font-medium">No ritmo atual, você estoura em {daysUntilOverflow} dia(s).</p>
+                  <p className="text-xs mt-1 text-muted-foreground">
+                    Ação recomendada: reduzir {formatCurrency(suggestedDaily)}/dia para não estourar.
+                  </p>
+                </div>
+              )}
               {isCritical && (
                 <div
                   className={cn(
@@ -270,9 +291,14 @@ export const Budgets = () => {
           );
         })}
         {budgetProgress.length === 0 && (
-          <Card className="p-12 text-center text-muted-foreground col-span-2">
-            Nenhum orçamento configurado. Clique em "Novo Orçamento" para começar.
-          </Card>
+          <div className="col-span-2">
+            <EmptyState
+              icon={<Target size={28} />}
+              title={emptyStates.budgets.title}
+              description={emptyStates.budgets.description}
+              primaryAction={{ label: emptyStates.budgets.primaryCta, onClick: () => setShowAdd(true) }}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -697,9 +723,36 @@ const SPENDING_TYPE_LABELS: Record<string, string> = {
 };
 const SPENDING_TYPE_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
 
-export const Reports = () => {
+export const Reports = ({
+  onGoToImport,
+  onAddTransaction,
+  onGuideClick,
+}: {
+  onGoToImport?: () => void;
+  onAddTransaction?: () => void;
+  onGuideClick?: () => void;
+} = {}) => {
   const { user } = useAuth();
   const { transactions, loading } = useTransactions(user?.id);
+
+  const now = new Date();
+  const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [prevY, prevM] = now.getMonth() === 0 ? [now.getFullYear() - 1, 12] : [now.getFullYear(), now.getMonth()];
+  const lastMonthPrefix = `${prevY}-${String(prevM).padStart(2, '0')}`;
+  const txThisMonth = transactions.filter((t) => t.amount < 0 && t.date.startsWith(thisMonthPrefix));
+  const txLastMonth = transactions.filter((t) => t.amount < 0 && t.date.startsWith(lastMonthPrefix));
+  const gastosThisMonth = getExpenseTotal(txThisMonth);
+  const gastosLastMonth = getExpenseTotal(txLastMonth);
+  const comparacaoPercent =
+    gastosLastMonth > 0
+      ? Math.round(((gastosThisMonth - gastosLastMonth) / gastosLastMonth) * 100)
+      : 0;
+
+  const spentByCategory = getSpentByCategory(transactions);
+  const categoriasMaisCaras = Object.entries(spentByCategory)
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8);
 
   const distribution = getSpendingTypeDistribution(transactions);
   const evolution = getSpendingTypeEvolution(transactions);
@@ -726,13 +779,83 @@ export const Reports = () => {
     );
   }
 
+  const hasExpenses = transactions.filter((t) => t.amount < 0).length > 0;
+  if (!hasExpenses) {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
+        <div>
+          <h2 className="text-2xl font-bold">Relatórios</h2>
+          <p className="text-foreground/80">
+            Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
+          </p>
+        </div>
+        <EmptyState
+          icon={<TrendingUp size={28} />}
+          title={emptyStates.reports.title}
+          description={emptyStates.reports.description}
+          primaryAction={onGoToImport ? { label: emptyStates.reports.primaryCta, onClick: onGoToImport } : undefined}
+          secondaryAction={onAddTransaction ? { label: emptyStates.reports.secondaryCta, onClick: onAddTransaction } : undefined}
+          onGuideClick={onGuideClick}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
       <div>
         <h2 className="text-2xl font-bold">Relatórios</h2>
         <p className="text-foreground/80">
-          Visão geral e tendências dos seus gastos.
+          Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
         </p>
+      </div>
+
+      {/* Comparação mensal + Categorias mais caras */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <h3 className="font-semibold text-lg mb-2">Comparação mensal</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Gastos deste mês vs mês passado.
+          </p>
+          <div className="flex items-baseline gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Este mês</p>
+              <p className="text-2xl font-bold text-destructive">{formatCurrency(gastosThisMonth)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Mês passado</p>
+              <p className="text-xl font-medium text-muted-foreground">{formatCurrency(gastosLastMonth)}</p>
+            </div>
+            {gastosLastMonth > 0 && (
+              <span
+                className={cn(
+                  'text-sm font-medium',
+                  comparacaoPercent > 0 ? 'text-destructive' : comparacaoPercent < 0 ? 'text-emerald-500' : 'text-muted-foreground'
+                )}
+              >
+                {comparacaoPercent > 0 ? '+' : ''}{comparacaoPercent}%
+              </span>
+            )}
+          </div>
+        </Card>
+        <Card className="p-6">
+          <h3 className="font-semibold text-lg mb-2">Categorias mais caras</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Onde você mais gastou (todo período).
+          </p>
+          {categoriasMaisCaras.length > 0 ? (
+            <ul className="space-y-2">
+              {categoriasMaisCaras.map(([cat, value]) => (
+                <li key={cat} className="flex justify-between items-center text-sm">
+                  <span className="font-medium">{cat}</span>
+                  <span className="text-destructive font-semibold">{formatCurrency(value)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum gasto registrado.</p>
+          )}
+        </Card>
       </div>
 
       {hasMindfulData ? (
@@ -740,7 +863,7 @@ export const Reports = () => {
           <Card className="p-6 [&_.recharts-legend-item-text]:fill-[hsl(var(--foreground))]">
             <div className="flex items-center gap-2 mb-6">
               <Brain size={22} className="text-primary" />
-              <h3 className="font-semibold text-lg">Mindful Finance — Distribuição por tipo</h3>
+              <h3 className="font-semibold text-lg">Relatório por comportamento</h3>
             </div>
             <p className="text-sm text-foreground/80 mb-4">
               Gastos classificados como Essencial, Opcional ou Emocional.
@@ -803,7 +926,7 @@ export const Reports = () => {
           <Card className="p-6 [&_.recharts-legend-item-text]:fill-[hsl(var(--foreground))]">
             <div className="flex items-center gap-2 mb-6">
               <TrendingUp size={22} className="text-primary" />
-              <h3 className="font-semibold text-lg">Evolução mensal por tipo</h3>
+              <h3 className="font-semibold text-lg">Evolução de gastos por tipo</h3>
             </div>
             <div className="h-[300px]">
               {evolution.length > 0 ? (
@@ -844,13 +967,13 @@ export const Reports = () => {
       ) : (
         <Card className="p-12 text-center">
           <Brain size={48} className="mx-auto mb-4 text-foreground/70" />
-          <h3 className="font-semibold text-lg mb-2">Mindful Finance</h3>
+          <h3 className="font-semibold text-lg mb-2">Relatório por comportamento</h3>
           <p className="text-foreground/85 max-w-md mx-auto mb-4">
-            Ao registrar novas despesas, classifique-as como Essencial, Opcional ou Emocional.
-            Os relatórios de comportamento financeiro aparecerão aqui.
+            Ao registrar gastos, classifique como Essencial, Opcional ou Emocional.
+            A análise por comportamento aparecerá aqui.
           </p>
           <p className="text-sm text-foreground/70">
-            Adicione transações e marque o tipo de gasto para começar.
+            Adicione lançamentos e marque o tipo de gasto para começar.
           </p>
         </Card>
       )}

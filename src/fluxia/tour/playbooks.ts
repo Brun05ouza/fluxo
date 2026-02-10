@@ -137,10 +137,19 @@ export const CATEGORIAS_PLAYBOOK: TourPlaybook = {
 };
 
 export const RELATORIOS_PLAYBOOK: TourPlaybook = {
-  id: 'RELATORIOS',
+  id: 'VER_RELATORIOS',
   title: 'Relatórios',
-  triggers: ['relatórios', 'relatório'],
-  steps: [],
+  triggers: ['relatórios', 'relatório', 'onde gastando mais'],
+  steps: [
+    {
+      id: 'nav-reports',
+      route: '/reports',
+      selector: 'fluxia-reports-page',
+      title: 'Relatórios',
+      body: 'Aqui você vê comparação mensal, categorias mais caras e relatório por comportamento (Essencial, Opcional, Emocional).',
+      placement: 'bottom',
+    },
+  ],
 };
 
 export const CONFIGURACOES_TEMA_PLAYBOOK: TourPlaybook = {
@@ -148,6 +157,45 @@ export const CONFIGURACOES_TEMA_PLAYBOOK: TourPlaybook = {
   title: 'Configurações e tema',
   triggers: ['configurações', 'tema', 'modo escuro'],
   steps: [],
+};
+
+export const ENTENDER_SCORE_PLAYBOOK: TourPlaybook = {
+  id: 'ENTENDER_SCORE',
+  title: 'Entender score',
+  triggers: ['score', 'entender score', 'como funciona o score'],
+  steps: [
+    {
+      id: 'dashboard-score',
+      route: '/',
+      selector: 'fluxia-dashboard-score',
+      title: 'Score do mês',
+      body: 'O score vai de 0 a 100 e mostra como está seu controle no mês: orçamento, categorização e uso dos gastos.',
+      placement: 'bottom',
+    },
+    {
+      id: 'score-suggestions',
+      selector: 'fluxia-dashboard-score-suggestions',
+      title: 'Sugestões para subir',
+      body: 'Aqui aparecem ações para melhorar o score: criar orçamento, categorizar lançamentos ou revisar gastos.',
+      placement: 'top',
+    },
+  ],
+};
+
+export const ENTENDER_RELATORIO_PLAYBOOK: TourPlaybook = {
+  id: 'ENTENDER_RELATORIO',
+  title: 'Entender relatório',
+  triggers: ['entender relatório', 'relatório comportamento', 'essencial opcional emocional'],
+  steps: [
+    {
+      id: 'nav-reports',
+      route: '/reports',
+      selector: 'fluxia-reports-page',
+      title: 'Relatório por comportamento',
+      body: 'Os gastos são classificados em Essencial (necessário), Opcional (conforto) e Emocional (impulso). Marque o tipo em cada transação para ver a análise.',
+      placement: 'bottom',
+    },
+  ],
 };
 
 export const PLAYBOOKS: TourPlaybook[] = [
@@ -158,6 +206,8 @@ export const PLAYBOOKS: TourPlaybook[] = [
   CATEGORIAS_PLAYBOOK,
   RELATORIOS_PLAYBOOK,
   CONFIGURACOES_TEMA_PLAYBOOK,
+  ENTENDER_SCORE_PLAYBOOK,
+  ENTENDER_RELATORIO_PLAYBOOK,
 ];
 
 export function getPlaybookByIntent(intent: string): TourPlaybook | undefined {

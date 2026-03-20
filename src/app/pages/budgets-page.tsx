@@ -10,8 +10,19 @@ import {
   HeartPulse,
   GraduationCap,
   X,
+  Pencil,
+  Check,
 } from 'lucide-react';
 import { Card, Button, ProgressBar, Input, cn } from '@/app/components/ui';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/app/components/ui/alert-dialog';
 import { EmptyState } from '@/app/components/patterns';
 import { emptyStates, labels } from '@/content/microcopy';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +46,7 @@ const BUDGET_ICONS: Record<string, React.ElementType> = {
 
 export const Budgets = () => {
   const { user } = useAuth();
-  const { budgets, loading, addBudget, deleteBudget } = useBudgets(user?.id);
+  const { budgets, loading, addBudget, updateBudget, deleteBudget } = useBudgets(user?.id);
   const { transactions } = useTransactions(user?.id);
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -44,6 +55,11 @@ export const Budgets = () => {
   const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
   const [newLimit, setNewLimit] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLimit, setEditLimit] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const spentByCategory = getSpentByCategory(transactions);
   const budgetProgress = getBudgetProgress(budgets, spentByCategory);
@@ -74,11 +90,37 @@ export const Budgets = () => {
     }
   };
 
-  const handleDeleteBudget = async (id: string) => {
-    if (!confirm('Remover este orçamento?')) return;
-    const { error } = await deleteBudget(id);
+  const handleDeleteConfirm = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    const { error } = await deleteBudget(deleteId);
+    setDeleting(false);
+    setDeleteId(null);
     if (error) toast.error(error.message);
     else toast.success('Orçamento removido');
+  };
+
+  const handleEditStart = (id: string, currentLimit: number) => {
+    setEditId(id);
+    setEditLimit(currentLimit.toFixed(2).replace('.', ','));
+  };
+
+  const handleEditSave = async () => {
+    if (!editId) return;
+    const limit = parseFloat(editLimit.replace(',', '.') || '0');
+    if (limit <= 0) {
+      toast.error('Informe um limite válido');
+      return;
+    }
+    setEditSaving(true);
+    const { error } = await updateBudget(editId, { limit_amount: limit });
+    setEditSaving(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success('Limite atualizado!');
+      setEditId(null);
+      setEditLimit('');
+    }
   };
 
   if (loading) {
@@ -176,19 +218,53 @@ export const Budgets = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg">{budget.category}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Limite: {formatCurrencyBRL(budget.limit)}
-                    </p>
+                    {editId === budget.id ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-muted-foreground">R$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-28 h-7 px-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          value={editLimit}
+                          onChange={(e) => setEditLimit(e.target.value.replace(/[^\d,.]/g, ''))}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleEditSave();
+                            if (e.key === 'Escape') setEditId(null);
+                          }}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10" onClick={handleEditSave} disabled={editSaving}>
+                          <Check size={14} />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditId(null)}>
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Limite: {formatCurrencyBRL(budget.limit)}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={() => handleDeleteBudget(budget.id)}
-                >
-                  <X size={18} />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => handleEditStart(budget.id, budget.limit)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeleteId(budget.id)}
+                  >
+                    <X size={18} />
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -253,6 +329,23 @@ export const Budgets = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent className="border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleDeleteConfirm} loading={deleting} disabled={deleting}>
+              Remover
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

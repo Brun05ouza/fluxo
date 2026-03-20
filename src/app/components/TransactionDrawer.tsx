@@ -62,7 +62,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave, initialTransaction 
     if (isOpen && initialTransaction) {
       setType(initialTransaction.amount > 0 ? 'income' : 'expense');
       const abs = Math.abs(initialTransaction.amount);
-      setAmount(abs % 1 === 0 ? abs.toString() + ',00' : abs.toFixed(2).replace('.', ','));
+      setAmount(abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
       setTitle(initialTransaction.title);
       setDescription(initialTransaction.description ?? '');
       setCategory(initialTransaction.category);
@@ -76,8 +76,24 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave, initialTransaction 
     }
   }, [isOpen, initialTransaction?.id]);
 
+  const parseBRL = (v: string) => {
+    const digits = v.replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) / 100 : 0;
+  };
+
+  const formatBRL = (v: string) => {
+    const digits = v.replace(/\D/g, '');
+    if (!digits) return '';
+    const num = parseInt(digits, 10);
+    return (num / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleAmountChange = (raw: string) => {
+    setAmount(formatBRL(raw));
+  };
+
   const handleSave = async () => {
-    const num = parseFloat(amount?.replace(',', '.') || '0');
+    const num = parseBRL(amount);
     if (num <= 0) {
       toast.error('Informe um valor válido');
       return;
@@ -189,11 +205,7 @@ export const TransactionDrawer = ({ isOpen, onClose, onSave, initialTransaction 
                       type === 'income' ? 'text-emerald-500' : 'text-foreground'
                     )}
                     value={amount}
-                    onChange={(e) =>
-                      setAmount(
-                        e.target.value.replace(/[^\d,.]/g, '').replace(/,/g, '.')
-                      )
-                    }
+                    onChange={(e) => handleAmountChange(e.target.value)}
                     autoFocus
                   />
                 </div>

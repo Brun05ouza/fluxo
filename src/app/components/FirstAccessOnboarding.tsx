@@ -60,6 +60,22 @@ type Phase =
   | 'leisure_budget'
   | 'processing';
 
+const PHASE_ORDER: Phase[] = [
+  'main_income',
+  'extra_income_yn',
+  'extra_income_detail',
+  'rent_yn',
+  'rent_amount',
+  'electricity_yn',
+  'electricity_amount',
+  'food_budget',
+  'emergency_yn',
+  'emergency_amount',
+  'leisure_budget',
+];
+
+const TOTAL_VISIBLE_STEPS = 8; // steps sem os condicionais opcionais
+
 export const FirstAccessOnboarding = ({
   userId,
   onComplete,
@@ -293,6 +309,9 @@ export const FirstAccessOnboarding = ({
   };
 
   const showBack = phase !== 'main_income' && phase !== 'processing';
+
+  const currentStep = phase === 'processing' ? TOTAL_VISIBLE_STEPS : Math.max(1, PHASE_ORDER.indexOf(phase) + 1);
+  const progressPercent = Math.round((currentStep / TOTAL_VISIBLE_STEPS) * 100);
 
   const inputClass =
     'w-full h-14 rounded-lg px-4 text-white placeholder-gray-600 focus:outline-none transition-all duration-200 font-mono text-sm border focus:ring-1 focus:ring-[#00FF94] focus:border-[#00FF94]';
@@ -546,6 +565,21 @@ export const FirstAccessOnboarding = ({
         <div className="flex justify-center pb-2">
           <FluxoBrand logoSize="md" textSize="2xl" className="[&_.fluxo-brand-text]:text-white" />
         </div>
+
+        {phase !== 'processing' && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs" style={{ color: loginColors.muted }}>
+              <span>Passo {currentStep} de {TOTAL_VISIBLE_STEPS}</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <div className="w-full h-1.5 rounded-full" style={{ background: loginColors.borderDark }}>
+              <div
+                className="h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%`, background: loginColors.primary }}
+              />
+            </div>
+          </div>
+        )}
 
         {phase !== 'processing' && (
           <div className="flex flex-col gap-2">

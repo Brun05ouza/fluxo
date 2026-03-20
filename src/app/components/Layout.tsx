@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   ArrowLeftRight,
-  ArrowRight,
-  PieChart, 
-  Target, 
-  Settings, 
-  LogOut, 
-  Menu, 
-  X, 
-  Moon, 
+  PieChart,
+  Target,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Moon,
   Sun,
   PlusCircle,
   Bell,
   FileText,
   Upload,
   User,
-  HelpCircle
+  HelpCircle,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,10 +56,12 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, dataTour }
   <button
     onClick={onClick}
     {...(dataTour ? { 'data-tour': dataTour } : {})}
+    title={collapsed ? label : undefined}
     className={cn(
-      "flex items-center w-full gap-3 px-3 py-2.5 rounded-[var(--radius)] transition-all group",
-      active 
-        ? "bg-primary text-primary-foreground shadow-sm" 
+      "flex items-center w-full rounded-[var(--radius)] transition-all group",
+      collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5",
+      active
+        ? "bg-primary text-primary-foreground shadow-sm"
         : "text-muted-foreground hover:bg-muted hover:text-foreground"
     )}
   >
@@ -78,8 +81,45 @@ export const AppLayout = ({
   onAddTransaction: () => void,
   onHelpClick?: () => void
 }) => {
+  const [pinned, setPinned] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const autoCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelTimer = useCallback(() => {
+    if (autoCollapseTimer.current) {
+      clearTimeout(autoCollapseTimer.current);
+      autoCollapseTimer.current = null;
+    }
+  }, []);
+
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (pinned) return;
+    cancelTimer();
+    setCollapsed(false);
+  }, [pinned, cancelTimer]);
+
+  const handleSidebarMouseLeave = useCallback(() => {
+    if (pinned) return;
+    cancelTimer();
+    autoCollapseTimer.current = setTimeout(() => {
+      setCollapsed(true);
+    }, 2000);
+  }, [pinned, cancelTimer]);
+
+  const handleTogglePin = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      if (!next) {
+        // ao desafixar, colapsa após 2s sem hover
+        autoCollapseTimer.current = setTimeout(() => setCollapsed(true), 2000);
+      } else {
+        cancelTimer();
+        setCollapsed(false);
+      }
+      return next;
+    });
+  }, [cancelTimer]);
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const location = useLocation();
@@ -112,29 +152,42 @@ export const AppLayout = ({
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-500/5 via-background to-background -z-10" />
 
       {/* Desktop Sidebar */}
-      <aside 
+      <aside
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
         className={cn(
           "hidden md:flex flex-col border-r border-border/50 bg-background/60 backdrop-blur-xl transition-all duration-300 z-20",
           collapsed ? "w-20" : "w-64"
         )}
       >
-        <div className="p-6 flex items-center justify-between">
+        {/* Logo + Pin */}
+        <div className={cn("p-4 flex items-center", collapsed ? "justify-center" : "justify-between px-5")}>
           {!collapsed ? (
-            <FluxoBrand logoSize="md" textSize="lg" />
+            <>
+              <FluxoBrand logoSize="md" textSize="lg" />
+              <button
+                onClick={handleTogglePin}
+                title={pinned ? 'Desafixar sidebar' : 'Fixar sidebar'}
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors",
+                  pinned
+                    ? "text-primary hover:bg-primary/10"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {pinned ? <Pin size={16} /> : <PinOff size={16} />}
+              </button>
+            </>
           ) : (
-            <img src="/fluxo-icon.png?v=2" alt="Fluxo" className="mx-auto w-10 h-10 object-contain" />
+            <img
+              src="/fluxo-icon.png?v=2"
+              alt="Fluxo"
+              className="w-16 h-16 object-contain"
+            />
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            className="hidden md:flex ml-auto text-muted-foreground hover:text-foreground"
-          >
-             {collapsed ? <ArrowRight size={16} /> : <ArrowLeftRight size={16} />}
-          </Button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-2">
+        <nav className="flex-1 px-2 space-y-1 mt-1">
           {menuItems.map((item) => (
             <SidebarItem
               key={item.path}
@@ -148,25 +201,31 @@ export const AppLayout = ({
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border/50 space-y-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleTheme} 
-            className="w-full justify-start gap-3 px-3 hover:bg-primary/5 transition-colors"
+        <div className={cn("border-t border-border/50 space-y-1", collapsed ? "p-2" : "p-3")}>
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+            className={cn(
+              "flex items-center w-full rounded-[var(--radius)] transition-colors hover:bg-primary/5",
+              collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5"
+            )}
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            {!collapsed && <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>}
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+            {theme === 'dark'
+              ? <Sun size={20} className="shrink-0 text-muted-foreground" />
+              : <Moon size={20} className="shrink-0 text-muted-foreground" />}
+            {!collapsed && <span className="text-sm font-medium text-muted-foreground">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>}
+          </button>
+          <button
             onClick={onLogout}
-            className="w-full justify-start gap-3 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+            title="Sair"
+            className={cn(
+              "flex items-center w-full rounded-[var(--radius)] transition-colors text-destructive hover:bg-destructive/10",
+              collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5"
+            )}
           >
-            <LogOut size={20} />
-            {!collapsed && <span>Sair</span>}
-          </Button>
+            <LogOut size={20} className="shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">Sair</span>}
+          </button>
         </div>
       </aside>
 
@@ -238,9 +297,8 @@ export const AppLayout = ({
             >
               <PlusCircle size={24} />
             </Button>
-            <Button size="icon" variant="ghost" className="relative hover:bg-muted/50 rounded-full">
+            <Button size="icon" variant="ghost" className="relative hover:bg-muted/50 rounded-full" title="Notificações (em breve)">
               <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive rounded-full border-2 border-background" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

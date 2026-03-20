@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,8 +12,8 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { Brain, TrendingUp } from 'lucide-react';
-import { Card, cn } from '@/app/components/ui';
+import { Brain, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, Button, cn } from '@/app/components/ui';
 import { EmptyState } from '@/app/components/patterns';
 import { emptyStates } from '@/content/microcopy';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,11 @@ import {
   getSpendingTypeEvolution,
 } from '@/lib/mindful-utils';
 import { formatCurrencyBRL } from '@/lib/format-currency';
+
+const MONTHS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
 
 const SPENDING_TYPE_LABELS: Record<string, string> = {
   ESSENTIAL: 'Essencial',
@@ -45,8 +50,20 @@ export const Reports = ({
   const { transactions, loading } = useTransactions(user?.id);
 
   const now = new Date();
-  const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [prevY, prevM] = now.getMonth() === 0 ? [now.getFullYear() - 1, 12] : [now.getFullYear(), now.getMonth()];
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) { setSelectedYear(y => y - 1); setSelectedMonth(12); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) { setSelectedYear(y => y + 1); setSelectedMonth(1); }
+    else setSelectedMonth(m => m + 1);
+  };
+
+  const thisMonthPrefix = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+  const [prevY, prevM] = selectedMonth === 1 ? [selectedYear - 1, 12] : [selectedYear, selectedMonth - 1];
   const lastMonthPrefix = `${prevY}-${String(prevM).padStart(2, '0')}`;
   const txThisMonth = transactions.filter((t) => t.amount < 0 && t.date.startsWith(thisMonthPrefix));
   const txLastMonth = transactions.filter((t) => t.amount < 0 && t.date.startsWith(lastMonthPrefix));
@@ -57,7 +74,7 @@ export const Reports = ({
       ? Math.round(((gastosThisMonth - gastosLastMonth) / gastosLastMonth) * 100)
       : 0;
 
-  const spentByCategory = getSpentByCategory(transactions);
+  const spentByCategory = getSpentByCategory(txThisMonth);
   const categoriasMaisCaras = Object.entries(spentByCategory)
     .filter(([, v]) => v > 0)
     .sort(([, a], [, b]) => b - a)
@@ -86,14 +103,32 @@ export const Reports = ({
   }
 
   const hasExpenses = transactions.filter((t) => t.amount < 0).length > 0;
+
+  const monthSelector = (
+    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-2 py-1.5">
+      <button type="button" onClick={handlePrevMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors" aria-label="Mês anterior">
+        <ChevronLeft size={20} />
+      </button>
+      <span className="min-w-[140px] text-center font-semibold text-sm">
+        {MONTHS[selectedMonth - 1]} {selectedYear}
+      </span>
+      <button type="button" onClick={handleNextMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors" aria-label="Próximo mês">
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  );
+
   if (!hasExpenses) {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
-        <div>
-          <h2 className="text-2xl font-bold">Relatórios</h2>
-          <p className="text-foreground/80">
-            Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Relatórios</h2>
+            <p className="text-foreground/80">
+              Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
+            </p>
+          </div>
+          {monthSelector}
         </div>
         <EmptyState
           icon={<TrendingUp size={28} />}
@@ -109,11 +144,14 @@ export const Reports = ({
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
-      <div>
-        <h2 className="text-2xl font-bold">Relatórios</h2>
-        <p className="text-foreground/80">
-          Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Relatórios</h2>
+          <p className="text-foreground/80">
+            Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
+          </p>
+        </div>
+        {monthSelector}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -124,11 +162,11 @@ export const Reports = ({
           </p>
           <div className="flex items-baseline gap-4">
             <div>
-              <p className="text-xs text-muted-foreground">Este mês</p>
+              <p className="text-xs text-muted-foreground">{MONTHS[selectedMonth - 1]}</p>
               <p className="text-2xl font-bold text-destructive">{formatCurrencyBRL(gastosThisMonth)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Mês passado</p>
+              <p className="text-xs text-muted-foreground">{MONTHS[prevM - 1]}</p>
               <p className="text-xl font-medium text-muted-foreground">{formatCurrencyBRL(gastosLastMonth)}</p>
             </div>
             {gastosLastMonth > 0 && (
@@ -146,7 +184,7 @@ export const Reports = ({
         <Card className="p-6">
           <h3 className="font-semibold text-lg mb-2">Categorias mais caras</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Onde você mais gastou (todo período).
+            Onde você mais gastou em {MONTHS[selectedMonth - 1]}.
           </p>
           {categoriasMaisCaras.length > 0 ? (
             <ul className="space-y-2">

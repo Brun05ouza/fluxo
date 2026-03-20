@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, MoreHorizontal, Trash2, Pencil, Inbox, Copy } from 'lucide-react';
+import { Search, MoreHorizontal, Trash2, Pencil, Inbox, Copy, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Card, Button, Badge, cn } from './ui';
 import { EmptyState } from './patterns';
 import { emptyStates, labels } from '@/content/microcopy';
@@ -32,12 +32,10 @@ const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
 type FilterType = 'all' | 'expense' | 'income';
-type FilterPeriod = 'all' | 'this_month' | 'last_month';
 
-const PERIOD_OPTIONS: { value: FilterPeriod; label: string }[] = [
-  { value: 'all', label: 'Todo período' },
-  { value: 'this_month', label: 'Este mês' },
-  { value: 'last_month', label: 'Mês passado' },
+const MONTH_NAMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
 function groupTransactionsByDay(list: Transaction[]): { label: string; items: Transaction[] }[] {
@@ -73,10 +71,12 @@ interface TransactionsProps {
 export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: TransactionsProps) => {
   const { user } = useAuth();
   const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions(user?.id);
+  const now = new Date();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('all');
+  const [filterYear, setFilterYear] = useState<number | null>(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState<number | null>(now.getMonth() + 1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
@@ -99,19 +99,13 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
 
     if (filterCategory !== 'all') list = list.filter((t) => t.category === filterCategory);
 
-    if (filterPeriod !== 'all') {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      const prefixThis = `${y}-${String(m).padStart(2, '0')}`;
-      const [prevY, prevM] = m === 1 ? [y - 1, 12] : [y, m - 1];
-      const prefixLast = `${prevY}-${String(prevM).padStart(2, '0')}`;
-      if (filterPeriod === 'this_month') list = list.filter((t) => t.date.startsWith(prefixThis));
-      if (filterPeriod === 'last_month') list = list.filter((t) => t.date.startsWith(prefixLast));
+    if (filterYear !== null && filterMonth !== null) {
+      const prefix = `${filterYear}-${String(filterMonth).padStart(2, '0')}`;
+      list = list.filter((t) => t.date.startsWith(prefix));
     }
 
     return list;
-  }, [transactions, searchTerm, filterType, filterCategory, filterPeriod]);
+  }, [transactions, searchTerm, filterType, filterCategory, filterYear, filterMonth]);
 
   const income = getIncomeTotal(filtered);
   const expense = getExpenseTotal(filtered);
@@ -168,13 +162,27 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
     searchTerm.trim() !== '' ||
     filterType !== 'all' ||
     filterCategory !== 'all' ||
-    filterPeriod !== 'all';
+    filterYear !== now.getFullYear() ||
+    filterMonth !== now.getMonth() + 1;
 
   const clearFilters = () => {
     setSearchTerm('');
     setFilterType('all');
     setFilterCategory('all');
-    setFilterPeriod('all');
+    setFilterYear(now.getFullYear());
+    setFilterMonth(now.getMonth() + 1);
+  };
+
+  const handlePrevMonth = () => {
+    if (filterYear === null || filterMonth === null) return;
+    if (filterMonth === 1) { setFilterYear(filterYear - 1); setFilterMonth(12); }
+    else setFilterMonth(filterMonth - 1);
+  };
+
+  const handleNextMonth = () => {
+    if (filterYear === null || filterMonth === null) return;
+    if (filterMonth === 12) { setFilterYear(filterYear + 1); setFilterMonth(1); }
+    else setFilterMonth(filterMonth + 1);
   };
 
   const groupedByDay = useMemo(() => groupTransactionsByDay(filtered), [filtered]);
@@ -256,17 +264,19 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
               </option>
             ))}
           </select>
-          <select
-            value={filterPeriod}
-            onChange={(e) => setFilterPeriod(e.target.value as FilterPeriod)}
-            className="h-9 px-3 rounded-lg border border-border bg-background text-sm"
-          >
-            {PERIOD_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1 h-9">
+            <button type="button" onClick={handlePrevMonth} className="p-1 rounded hover:bg-muted transition-colors" aria-label="Mês anterior">
+              <ChevronLeft size={16} />
+            </button>
+            <span className="min-w-[130px] text-center text-sm font-medium select-none">
+              {filterYear !== null && filterMonth !== null
+                ? `${MONTH_NAMES[filterMonth - 1]} ${filterYear}`
+                : 'Todo período'}
+            </span>
+            <button type="button" onClick={handleNextMonth} className="p-1 rounded hover:bg-muted transition-colors" aria-label="Próximo mês">
+              <ChevronRight size={16} />
+            </button>
+          </div>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
               {labels.limparFiltros}

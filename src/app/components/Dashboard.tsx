@@ -436,15 +436,15 @@ export const Dashboard = ({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 max-h-24 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
             {dataPie.map((item) => (
-              <div key={item.name} className="flex items-center gap-2 text-sm">
+              <div key={item.name} className="flex items-center gap-2 text-sm min-w-0">
                 <div
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
-                <span>{item.name}</span>
-                <span className="font-medium">{formatCurrencyBRL(item.value)}</span>
+                <span className="truncate text-muted-foreground">{item.name}</span>
+                <span className="font-medium shrink-0 ml-auto">{formatCurrencyBRL(item.value)}</span>
               </div>
             ))}
           </div>

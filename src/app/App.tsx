@@ -63,23 +63,18 @@ const AppContent = () => {
     return result;
   };
 
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
         <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
+        <p className="text-sm text-muted-foreground animate-pulse">
+          {loading ? 'Verificando sessão…' : 'Carregando seu perfil…'}
+        </p>
       </div>
     );
   }
 
   if (!user) return <Login />;
-
-  if (profileLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
 
   const needsOnboarding = !profile || profile.onboarding_completed_at == null;
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -19,9 +19,11 @@ import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { Toaster, toast } from 'sonner';
 import { TourProvider, FluxiaButton, FluxiaDrawer } from '@/fluxia';
 import { AdminGate } from '@/admin/AdminGate';
+import { AdminPage } from '@/admin/AdminPage';
 
 const AppContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading, signOut } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useFinancialProfile(user?.id);
   const { transactions, addTransaction } = useTransactions(user?.id);
@@ -91,6 +93,11 @@ const AppContent = () => {
         <Toaster position="top-right" />
       </>
     );
+  }
+
+  if (location.pathname.startsWith('/admin')) {
+    if (!profile?.is_admin) return <Navigate to="/" replace />;
+    return <AdminPage userId={user.id} />;
   }
 
   return (

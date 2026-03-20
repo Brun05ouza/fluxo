@@ -1,45 +1,35 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLoginModal } from './AdminLoginModal';
-import { AdminPanel } from './AdminPanel';
-
-type AdminState = 'closed' | 'login' | 'panel';
 
 interface AdminGateProps {
   currentUserId: string;
 }
 
-export function AdminGate({ currentUserId }: AdminGateProps) {
-  const [state, setState] = useState<AdminState>('closed');
+export function AdminGate({ currentUserId: _ }: AdminGateProps) {
+  const navigate = useNavigate();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'A') {
         e.preventDefault();
-        setState((prev) => {
-          if (prev !== 'closed') return 'closed'; // toggle: fecha se já aberto
-          return 'login';
-        });
+        setLoginOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  if (state === 'closed') return null;
-
-  if (state === 'login') {
-    return (
-      <AdminLoginModal
-        onSuccess={() => setState('panel')}
-        onClose={() => setState('closed')}
-      />
-    );
-  }
+  if (!loginOpen) return null;
 
   return (
-    <AdminPanel
-      currentUserId={currentUserId}
-      onClose={() => setState('closed')}
+    <AdminLoginModal
+      onSuccess={() => {
+        setLoginOpen(false);
+        navigate('/admin');
+      }}
+      onClose={() => setLoginOpen(false)}
     />
   );
 }

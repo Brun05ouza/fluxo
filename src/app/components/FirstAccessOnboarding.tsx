@@ -576,7 +576,7 @@ export const FirstAccessOnboarding = ({
         {phase !== 'processing' && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs" style={{ color: loginColors.muted }}>
-              <span>Passo {currentStep} de {TOTAL_VISIBLE_STEPS}</span>
+              <span>Passo {currentStep} de {TOTAL_STEPS}</span>
               <span>{progressPercent}%</span>
             </div>
             <div className="w-full h-1.5 rounded-full" style={{ background: loginColors.borderDark }}>

@@ -73,6 +73,7 @@ export interface FinancialProfile {
   id: string;
   monthly_income: number;
   pay_day: number;
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
   /** Null/undefined = wizard de primeiro acesso pendente */

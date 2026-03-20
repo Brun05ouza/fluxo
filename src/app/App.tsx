@@ -18,6 +18,7 @@ import { FirstAccessOnboarding } from './components/FirstAccessOnboarding';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { Toaster, toast } from 'sonner';
 import { TourProvider, FluxiaButton, FluxiaDrawer } from '@/fluxia';
+import { AdminGate } from '@/admin/AdminGate';
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -132,6 +133,7 @@ const AppContent = () => {
       />
       <FluxiaButton onClick={() => setFluxiaOpen(true)} hidden={fluxiaOpen || isDrawerOpen} />
       <FluxiaDrawer open={fluxiaOpen} onOpenChange={setFluxiaOpen} />
+      <AdminGate currentUserId={user.id} />
     </TourProvider>
   );
 };

@@ -74,7 +74,14 @@ const PHASE_ORDER: Phase[] = [
   'leisure_budget',
 ];
 
-const TOTAL_VISIBLE_STEPS = 8; // steps sem os condicionais opcionais
+const TOTAL_STEPS = PHASE_ORDER.length; // 11 fases possíveis
+
+function formatBRL(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10);
+  return (num / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export const FirstAccessOnboarding = ({
   userId,
@@ -310,8 +317,8 @@ export const FirstAccessOnboarding = ({
 
   const showBack = phase !== 'main_income' && phase !== 'processing';
 
-  const currentStep = phase === 'processing' ? TOTAL_VISIBLE_STEPS : Math.max(1, PHASE_ORDER.indexOf(phase) + 1);
-  const progressPercent = Math.round((currentStep / TOTAL_VISIBLE_STEPS) * 100);
+  const currentStep = phase === 'processing' ? TOTAL_STEPS : Math.max(1, PHASE_ORDER.indexOf(phase) + 1);
+  const progressPercent = Math.min(100, Math.round((currentStep / TOTAL_STEPS) * 100));
 
   const inputClass =
     'w-full h-14 rounded-lg px-4 text-white placeholder-gray-600 focus:outline-none transition-all duration-200 font-mono text-sm border focus:ring-1 focus:ring-[#00FF94] focus:border-[#00FF94]';
@@ -345,7 +352,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={mainIncomeRaw}
-            onChange={(e) => setMainIncomeRaw(e.target.value)}
+            onChange={(e) => setMainIncomeRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
@@ -381,7 +388,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={extraAmountRaw}
-            onChange={(e) => setExtraAmountRaw(e.target.value)}
+            onChange={(e) => setExtraAmountRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
           />
@@ -404,7 +411,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={rentAmountRaw}
-            onChange={(e) => setRentAmountRaw(e.target.value)}
+            onChange={(e) => setRentAmountRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
@@ -428,7 +435,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={electricityAmountRaw}
-            onChange={(e) => setElectricityAmountRaw(e.target.value)}
+            onChange={(e) => setElectricityAmountRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
@@ -448,7 +455,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={foodBudgetRaw}
-            onChange={(e) => setFoodBudgetRaw(e.target.value)}
+            onChange={(e) => setFoodBudgetRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
@@ -472,7 +479,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={emergencyAmountRaw}
-            onChange={(e) => setEmergencyAmountRaw(e.target.value)}
+            onChange={(e) => setEmergencyAmountRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
@@ -492,7 +499,7 @@ export const FirstAccessOnboarding = ({
             inputMode="decimal"
             placeholder="0,00"
             value={leisureBudgetRaw}
-            onChange={(e) => setLeisureBudgetRaw(e.target.value)}
+            onChange={(e) => setLeisureBudgetRaw(formatBRL(e.target.value))}
             className={inputClass}
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus

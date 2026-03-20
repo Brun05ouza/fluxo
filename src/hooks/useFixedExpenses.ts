@@ -25,15 +25,12 @@ export function useFixedExpenses(userId: string | undefined) {
 
     fetch();
 
-    const poll = setInterval(() => fetch(), 2000);
-
     const channel = supabase
       .channel('fixed_expenses-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fixed_expenses', filter: `user_id=eq.${userId}` }, fetch)
       .subscribe();
 
     return () => {
-      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [userId]);

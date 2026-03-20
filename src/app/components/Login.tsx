@@ -11,6 +11,7 @@ import {
   maskCpf,
   unmaskCpf,
 } from '@/lib/validation';
+import { mapAuthError } from '@/lib/authErrors';
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
@@ -39,8 +40,9 @@ export const Login = () => {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) {
-        setError(err.message);
-        toast.error(err.message);
+        const msg = mapAuthError(err);
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setGoogleLoading(false);
@@ -62,7 +64,7 @@ export const Login = () => {
       if (mode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {
-          setError(error.message);
+          setError(mapAuthError(error));
           return;
         }
         toast.success('Bem-vindo de volta!');
@@ -84,13 +86,13 @@ export const Login = () => {
           cpf: unmaskCpf(cpf),
         });
         if (error) {
-          const msg = error.message?.toLowerCase() || '';
-          if (msg.includes('rate limit') || msg.includes('429')) {
+          const raw = error.message?.toLowerCase() || '';
+          if (raw.includes('rate limit') || raw.includes('429')) {
             setError(
               'Limite de envio de e-mails atingido. Aguarde alguns minutos e tente novamente.'
             );
           } else {
-            setError(error.message);
+            setError(mapAuthError(error));
           }
           return;
         }
@@ -101,7 +103,7 @@ export const Login = () => {
       } else {
         const { error } = await resetPassword(email);
         if (error) {
-          setError(error.message);
+          setError(mapAuthError(error));
           return;
         }
         toast.success('E-mail de redefinição enviado!');

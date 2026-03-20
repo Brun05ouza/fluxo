@@ -25,15 +25,12 @@ export function useBudgets(userId: string | undefined) {
 
     fetch();
 
-    const poll = setInterval(() => fetch(), 2000);
-
     const channel = supabase
       .channel('budgets-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets', filter: `user_id=eq.${userId}` }, fetch)
       .subscribe();
 
     return () => {
-      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [userId]);

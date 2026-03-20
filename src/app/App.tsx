@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -15,14 +14,15 @@ import { ImportPage } from '@/features/importer/ImportPage';
 import { ImportPreviewPage } from '@/features/importer/ImportPreviewPage';
 import { TransactionDrawer } from './components/TransactionDrawer';
 import { Login } from './components/Login';
+import { FirstAccessOnboarding } from './components/FirstAccessOnboarding';
+import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { Toaster, toast } from 'sonner';
 import { TourProvider, FluxiaButton, FluxiaDrawer } from '@/fluxia';
-
-const queryClient = new QueryClient();
 
 const AppContent = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const { profile, loading: profileLoading, refetch: refetchProfile } = useFinancialProfile(user?.id);
   const { transactions, addTransaction } = useTransactions(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
@@ -73,6 +73,30 @@ const AppContent = () => {
 
   if (!user) return <Login />;
 
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const needsOnboarding = !profile || profile.onboarding_completed_at == null;
+
+  if (needsOnboarding) {
+    return (
+      <>
+        <FirstAccessOnboarding
+          userId={user.id}
+          onComplete={async () => {
+            await refetchProfile();
+          }}
+        />
+        <Toaster position="top-right" />
+      </>
+    );
+  }
+
   return (
     <TourProvider>
       <AppLayout
@@ -118,16 +142,14 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppContent />
-          <Toaster position="top-right" />
-        </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ThemeProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppContent />
+        <Toaster position="top-right" />
+      </BrowserRouter>
+    </AuthProvider>
+  </ThemeProvider>
 );
 
 export default App;

@@ -25,15 +25,12 @@ export function useTransactions(userId: string | undefined) {
 
     fetch();
 
-    const poll = setInterval(() => fetch(), 2000);
-
     const channel = supabase
       .channel('transactions-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` }, fetch)
       .subscribe();
 
     return () => {
-      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [userId]);

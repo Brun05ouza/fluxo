@@ -10,6 +10,7 @@ Fluxo/
 ├── src/
 │   ├── app/                # Aplicação principal
 │   │   ├── App.tsx         # Componente raiz e rotas
+│   │   ├── pages/          # Páginas por rota (Orçamentos, Perfil, Config, Relatórios)
 │   │   └── components/     # Componentes da aplicação
 │   │       ├── Dashboard.tsx
 │   │       ├── FluxoBrand.tsx   # Logo + nome animado

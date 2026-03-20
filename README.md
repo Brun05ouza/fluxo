@@ -14,12 +14,32 @@ Run `npm run dev` to start the development server.
 
 ## Autenticação (Supabase)
 
-O projeto usa Supabase Auth para login e cadastro de usuários. As credenciais padrão estão em `src/config/supabase.ts`. Para usar outro projeto Supabase, crie um arquivo `.env` com:
+O projeto usa Supabase Auth. O Vite lê **`VITE_SUPABASE_URL`** e **`VITE_SUPABASE_ANON_KEY`** do arquivo **`.env`** na raiz. Se não existir `.env`, usa o fallback em `src/config/supabase.ts`.
+
+### Erro `ERR_NAME_NOT_RESOLVED` / `Failed to fetch` no login
+
+O navegador não consegue resolver o host do Supabase (DNS). Causas comuns:
+
+1. **Você usa Supabase local (`supabase start`)** mas o app ainda aponta para a nuvem — crie `.env` com a API local:
+   ```bash
+   npx supabase status
+   ```
+   Copie **API URL** (ex.: `http://127.0.0.1:54321`) e **anon key** para `.env` (veja `.env.example`) e **reinicie** `npm run dev`.
+
+2. **Projeto na nuvem removido, pausado ou URL errada** — abra [Supabase Dashboard](https://supabase.com/dashboard) → seu projeto → **Settings → API** e coloque **Project URL** e **anon public** no `.env`.
+
+3. **Rede / firewall / DNS** bloqueando `*.supabase.co`.
+
+Sempre que alterar `.env`, pare e suba de novo o `npm run dev`.
+
+### Credenciais no `.env` (nuvem ou local)
 
 ```
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-anon-key
 ```
+
+Para desenvolvimento local com CLI, use a URL e a chave mostradas por `supabase status` (não o fallback do repositório).
 
 ### Configuração no Supabase Dashboard
 
@@ -34,3 +54,4 @@ VITE_SUPABASE_ANON_KEY=sua-anon-key
 2. Execute em ordem:
    - `supabase/migrations/001_initial.sql` — tabelas `transactions` e `budgets`
    - `supabase/migrations/002_users_table.sql` — tabela `users` (nome, CPF, email) com sync automático do cadastro. A senha permanece criptografada em `auth.users`.
+   - `supabase/migrations/006_onboarding.sql` — colunas `onboarding_completed_at` e `onboarding_data` em `financial_profile` (primeiro acesso no app). Quem já tinha perfil recebe a data automaticamente e não passa pelo wizard de novo.

@@ -36,10 +36,8 @@ import {
 } from '@/lib/journey';
 import { KPIGroup, SectionCard, PrimaryCTA, EmptyState, SuccessBanner, ScoreRadial, InlineHint } from './patterns';
 import { emptyStates, labels, hints, success, dashboardActionTitles, ctas } from '@/content/microcopy';
+import { formatCurrencyBRL } from '@/lib/format-currency';
 import { Upload } from 'lucide-react';
-
-const formatCurrency = (v: number) =>
-  'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -289,9 +287,9 @@ export const Dashboard = ({
       {/* KPIs: Gastos, Receitas, Saldo */}
       <KPIGroup
         items={[
-          { label: labels.kpiGastos, value: formatCurrency(expense), variant: 'negative' },
-          { label: labels.kpiReceitas, value: formatCurrency(income), variant: 'positive' },
-          { label: labels.kpiSaldo, value: formatCurrency(balance) },
+          { label: labels.kpiGastos, value: formatCurrencyBRL(expense), variant: 'negative' },
+          { label: labels.kpiReceitas, value: formatCurrencyBRL(income), variant: 'positive' },
+          { label: labels.kpiSaldo, value: formatCurrencyBRL(balance) },
         ]}
       />
 
@@ -371,7 +369,7 @@ export const Dashboard = ({
             ) : undefined
           }
         >
-          <p className="text-2xl font-bold">{formatCurrency(fixedTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyBRL(fixedTotal)}</p>
           {fixedPercentOfIncome != null && monthlyIncome > 0 && (
             <p className="text-sm text-muted-foreground mt-1">
               {labels.percentualRenda.replace('{percent}', String(fixedPercentOfIncome))}
@@ -429,7 +427,7 @@ export const Dashboard = ({
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<ChartTooltip formatter={(v) => formatCurrency(v)} />} />
+                  <Tooltip content={<ChartTooltip formatter={(v) => formatCurrencyBRL(v)} />} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -446,7 +444,7 @@ export const Dashboard = ({
                   style={{ backgroundColor: item.color }}
                 />
                 <span>{item.name}</span>
-                <span className="font-medium">{formatCurrency(item.value)}</span>
+                <span className="font-medium">{formatCurrencyBRL(item.value)}</span>
               </div>
             ))}
           </div>
@@ -493,7 +491,7 @@ export const Dashboard = ({
                         isIncome ? 'text-emerald-500' : 'text-destructive'
                       )}
                     >
-                      {isIncome ? '+' : '-'} {formatCurrency(Math.abs(tx.amount))}
+                      {isIncome ? '+' : '-'} {formatCurrencyBRL(Math.abs(tx.amount))}
                     </span>
                   </div>
                 );
@@ -517,7 +515,7 @@ export const Dashboard = ({
               .map((c) => (
                 <li key={c.category}>
                   No ritmo atual, <strong className="text-foreground">{c.category}</strong> estoura em{' '}
-                  {c.daysUntilOverflow} dia(s). Reduzir {formatCurrency(c.suggestedDailyLimit)}/dia para não estourar.
+                  {c.daysUntilOverflow} dia(s). Reduzir {formatCurrencyBRL(c.suggestedDailyLimit)}/dia para não estourar.
                 </li>
               ))}
           </ul>

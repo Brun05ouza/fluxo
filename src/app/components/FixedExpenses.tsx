@@ -7,9 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFixedExpenses } from '@/hooks/useFixedExpenses';
 import { CATEGORIES } from '@/types/database';
 import { toast } from 'sonner';
-
-const formatCurrency = (v: number) =>
-  'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import { formatCurrencyBRL } from '@/lib/format-currency';
 
 export const FixedExpenses = () => {
   const { user } = useAuth();
@@ -144,7 +142,7 @@ export const FixedExpenses = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold">Total mensal</h3>
-            <span className="text-2xl font-bold text-destructive">{formatCurrency(totalMonthly)}</span>
+            <span className="text-2xl font-bold text-destructive">{formatCurrencyBRL(totalMonthly)}</span>
           </div>
           {sortedByDueDay.length > 0 ? (
             <div className="space-y-3">
@@ -165,7 +163,7 @@ export const FixedExpenses = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="font-semibold">{formatCurrency(exp.amount)}</span>
+                    <span className="font-semibold">{formatCurrencyBRL(exp.amount)}</span>
                     <Button
                       variant="ghost"
                       size="icon"

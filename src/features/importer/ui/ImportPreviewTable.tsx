@@ -2,9 +2,7 @@ import React from 'react';
 import { Card, Badge, Button, cn } from '@/app/components/ui';
 import { CategoryInlineSelect } from './CategoryInlineSelect';
 import type { PreviewTxn } from '../types';
-
-const formatCurrency = (v: number) =>
-  'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import { formatCurrencyAbsBRL } from '@/lib/format-currency';
 
 interface ImportPreviewTableProps {
   rows: PreviewTxn[];
@@ -82,7 +80,7 @@ export const ImportPreviewTable = ({
                     row.amount >= 0 ? 'text-emerald-500' : 'text-foreground'
                   )}
                 >
-                  {row.amount >= 0 ? '+' : '-'} {formatCurrency(row.amount)}
+                  {row.amount >= 0 ? '+' : '-'} {formatCurrencyAbsBRL(row.amount)}
                 </td>
                 <td className="px-4 py-2">
                   <span className="text-xs text-muted-foreground">

@@ -26,9 +26,7 @@ import { getIncomeTotal, getExpenseTotal } from '@/lib/transaction-utils';
 import { CATEGORIES } from '@/types/database';
 import type { Transaction } from '@/types/database';
 import { toast } from 'sonner';
-
-const formatCurrency = (v: number) =>
-  'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import { formatCurrencyBRL } from '@/lib/format-currency';
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -311,7 +309,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
                         isIncome ? 'text-emerald-500' : 'text-destructive'
                       )}
                     >
-                      {isIncome ? '+' : '-'} {formatCurrency(Math.abs(tx.amount))}
+                      {isIncome ? '+' : '-'} {formatCurrencyBRL(Math.abs(tx.amount))}
                     </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -365,15 +363,15 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
           <div className="flex gap-6">
             <div>
               <p className="text-xs text-muted-foreground">Receitas</p>
-              <p className="font-semibold text-emerald-500">{formatCurrency(income)}</p>
+              <p className="font-semibold text-emerald-500">{formatCurrencyBRL(income)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Gastos</p>
-              <p className="font-semibold text-destructive">{formatCurrency(expense)}</p>
+              <p className="font-semibold text-destructive">{formatCurrencyBRL(expense)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Saldo</p>
-              <p className="font-semibold">{formatCurrency(net)}</p>
+              <p className="font-semibold">{formatCurrencyBRL(net)}</p>
             </div>
           </div>
         </Card>

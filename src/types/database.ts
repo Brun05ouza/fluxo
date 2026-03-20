@@ -64,12 +64,20 @@ export const PAYMENT_METHODS = [
   'Débito Automático',
 ] as const;
 
+/** Snapshot opcional gravado no wizard de primeiro acesso */
+export interface OnboardingData {
+  extraIncomes?: Array<{ label: string; amount: number }>;
+}
+
 export interface FinancialProfile {
   id: string;
   monthly_income: number;
   pay_day: number;
   created_at: string;
   updated_at: string;
+  /** Null/undefined = wizard de primeiro acesso pendente */
+  onboarding_completed_at?: string | null;
+  onboarding_data?: OnboardingData | null;
 }
 
 export interface FixedExpense {

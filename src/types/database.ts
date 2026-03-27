@@ -1,4 +1,7 @@
 export type TransactionType = 'expense' | 'income';
+export type TransactionKind = 'income' | 'expense' | 'transfer' | 'invoice_payment' | 'adjustment';
+export type TransactionOrigin = 'manual' | 'automatic' | 'imported' | 'recurring';
+export type SettlementStatus = 'pending' | 'settled' | 'ignored';
 
 /** Período da recorrência (detalhes no formulário expandido) */
 export type RecurringInterval = 'MONTH' | 'WEEK';
@@ -55,6 +58,56 @@ export interface Account {
   updated_at: string;
 }
 
+export interface CreditCard {
+  id: string;
+  user_id: string;
+  name: string;
+  brand: string | null;
+  bank_name: string | null;
+  color: string;
+  limit_total: number;
+  closing_day: number;
+  due_day: number;
+  payment_account_id: string | null;
+  is_automatic: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreditCardInvoiceStatus = 'open' | 'closed' | 'paid' | 'partial' | 'late';
+
+export interface CreditCardInvoice {
+  id: string;
+  user_id: string;
+  credit_card_id: string;
+  reference_month: string;
+  closing_date: string;
+  due_date: string;
+  amount_total: number;
+  amount_paid: number;
+  status: CreditCardInvoiceStatus;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditCardInvoiceItem {
+  id: string;
+  user_id: string;
+  credit_card_id: string;
+  invoice_id: string;
+  transaction_id: string | null;
+  description: string;
+  amount: number;
+  purchase_date: string;
+  installment_number: number;
+  installment_total: number;
+  status: 'active' | 'cancelled' | 'ignored';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Transaction {
   id: string;
   user_id: string;
@@ -62,9 +115,26 @@ export interface Transaction {
   description: string | null;
   category: string;
   amount: number;
+  /**
+   * Data de competencia (referencia contabil/analitica).
+   * Mantida opcional para compatibilidade durante migracao de schema.
+   */
+  competency_date?: string | null;
+  /**
+   * Data efetiva de caixa.
+   * Mantida opcional para compatibilidade durante migracao de schema.
+   */
+  effective_date?: string | null;
   date: string;
+  transaction_kind?: TransactionKind;
+  origin?: TransactionOrigin;
+  settlement_status?: SettlementStatus;
   payment_method: string;
   account_id?: string | null;
+  credit_card_id?: string | null;
+  credit_card_invoice_id?: string | null;
+  invoice_item_id?: string | null;
+  destination_account_id?: string | null;
   tags: string[];
   is_recurring: boolean;
   spending_type?: SpendingType | null;

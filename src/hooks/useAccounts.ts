@@ -1,8 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Account, AccountType } from '@/types/database';
+import type { Account } from '@/types/database';
+import {
+  toAccountInsertRow,
+  toAccountUpdatePatch,
+  type AccountInsertInput,
+} from '@/features/finance/application/account-command-service';
 
-export type AccountInsert = Omit<Account, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type AccountInsert = AccountInsertInput;
 
 export function useAccounts(userId: string | undefined) {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -48,18 +53,10 @@ export function useAccounts(userId: string | undefined) {
 
   const addAccount = async (row: AccountInsert) => {
     if (!userId) return { error: new Error('Não autenticado'), id: undefined as string | undefined };
+    const body = toAccountInsertRow(userId, row);
     const { data, error } = await supabase
       .from('accounts')
-      .insert({
-        user_id: userId,
-        name: row.name.slice(0, 200),
-        institution_key: row.institution_key.slice(0, 64),
-        account_type: row.account_type,
-        color: row.color.slice(0, 32),
-        initial_balance: row.initial_balance,
-        credit_limit: row.credit_limit,
-        include_in_home_total: row.include_in_home_total,
-      })
+      .insert(body)
       .select('id')
       .single();
     return {
@@ -70,12 +67,7 @@ export function useAccounts(userId: string | undefined) {
 
   const updateAccount = async (id: string, patch: Partial<AccountInsert>) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const body: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    (Object.entries(patch) as [keyof AccountInsert, AccountInsert[keyof AccountInsert]][]).forEach(
-      ([k, v]) => {
-        if (v !== undefined) body[k as string] = v;
-      }
-    );
+    const body = toAccountUpdatePatch(patch);
     const { data, error } = await supabase
       .from('accounts')
       .update(body)

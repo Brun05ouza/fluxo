@@ -17,6 +17,7 @@ import {
   TrendingDown,
   Scale,
   Filter,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, Button, cn } from './ui';
 import { EmptyState } from './patterns';
@@ -240,6 +241,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
 
   const filterTypeLabel =
     filterType === 'all' ? 'Todas' : filterType === 'expense' ? 'Despesas' : 'Receitas';
+  const handleRefreshPage = () => {
+    window.location.reload();
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -252,6 +256,15 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full shrink-0"
+            title="Recarregar esta página"
+            onClick={handleRefreshPage}
+          >
+            <RefreshCw className="size-4" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

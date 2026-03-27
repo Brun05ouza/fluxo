@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Plus,
+  BriefcaseBusiness,
   Building2,
   ChevronRight,
   Search,
@@ -72,14 +73,15 @@ function parseBRLToNumber(formatted: string): number {
 }
 
 function InstitutionOrb({ inst, size = 'md' }: { inst: FinancialInstitution; size?: 'sm' | 'md' }) {
-  const cls = size === 'md' ? 'size-10 text-sm' : 'size-8 text-xs';
+  const cls = size === 'md' ? 'size-10 text-sm rounded-[12px]' : 'size-8 text-xs rounded-[10px]';
+  const iconSize = size === 'md' ? 'size-5' : 'size-4';
   return (
     <div
-      className={cn(cls, 'rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm')}
+      className={cn(cls, 'flex items-center justify-center font-bold text-white shrink-0 shadow-sm')}
       style={{ backgroundColor: inst.color }}
       aria-hidden
     >
-      {inst.name.slice(0, 2).toUpperCase()}
+      {inst.key === 'custom' ? <BriefcaseBusiness className={iconSize} /> : inst.name.slice(0, 2).toUpperCase()}
     </div>
   );
 }
@@ -251,16 +253,16 @@ export const AccountsPage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             <button
               type="button"
               onClick={openNewAccount}
-              className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors p-6 flex flex-col items-center justify-center gap-2 text-center min-h-[160px]"
+              className="group relative rounded-2xl border-2 border-dashed border-muted-foreground/25 bg-transparent hover:border-primary/50 hover:bg-primary/5 transition-all p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[180px]"
             >
-              <div className="size-14 rounded-full bg-primary/15 text-primary flex items-center justify-center">
-                <Plus className="size-7" />
+              <div className="size-12 rounded-full bg-muted/50 group-hover:bg-primary/10 text-muted-foreground group-hover:text-primary transition-colors flex items-center justify-center">
+                <Plus className="size-6" />
               </div>
-              <span className="font-semibold text-primary">Nova conta</span>
+              <span className="font-medium text-muted-foreground group-hover:text-primary transition-colors">Nova conta</span>
             </button>
 
             {accounts.map((acc) => {
@@ -269,18 +271,21 @@ export const AccountsPage = () => {
                 ({ key: 'custom', name: 'Outra', color: acc.color } as FinancialInstitution);
               const balance = getAccountBalance(acc, transactions);
               return (
-                <Card key={acc.id} className="rounded-2xl p-4 flex flex-col gap-3 border-border/80 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <InstitutionOrb inst={{ ...inst, color: acc.color }} size="md" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{acc.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === acc.account_type)?.label}
-                      </p>
+                <Card key={acc.id} className="group relative rounded-2xl p-5 flex flex-col gap-4 border-border/50 bg-card hover:border-border/80 transition-colors shadow-sm overflow-hidden min-h-[180px]">
+                  <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: acc.color }} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <InstitutionOrb inst={{ ...inst, color: acc.color }} size="md" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-base truncate text-foreground leading-tight">{acc.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === acc.account_type)?.label}
+                        </p>
+                      </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 -mr-2 -mt-1 text-muted-foreground hover:text-foreground">
                           <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -298,35 +303,37 @@ export const AccountsPage = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div className="space-y-2 text-sm border-t border-border/60 pt-3">
-                    {acc.account_type === 'CREDIT_CARD' && acc.credit_limit != null && acc.credit_limit > 0 && (
-                      <div className="flex justify-between gap-2 text-xs">
-                        <span className="text-muted-foreground">Limite</span>
-                        <span className="tabular-nums font-medium">{formatCurrencyBRL(acc.credit_limit)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between gap-2">
-                      <span className="text-muted-foreground">
-                        {acc.account_type === 'CREDIT_CARD' ? 'Saldo (movimentação)' : 'Saldo atual'}
-                      </span>
+                  
+                  <div className="pt-2">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      {acc.account_type === 'CREDIT_CARD' ? 'Fatura atual' : 'Saldo atual'}
+                    </p>
+                    <div className="flex items-baseline gap-2">
                       <span
                         className={cn(
-                          'font-semibold tabular-nums',
-                          balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                          'text-2xl font-bold tracking-tight tabular-nums',
+                          balance >= 0 ? 'text-foreground' : 'text-destructive'
                         )}
                       >
                         {formatCurrencyBRL(balance)}
                       </span>
                     </div>
+                    {acc.account_type === 'CREDIT_CARD' && acc.credit_limit != null && acc.credit_limit > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Limite: <span className="font-medium">{formatCurrencyBRL(acc.credit_limit)}</span>
+                      </p>
+                    )}
                   </div>
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
+
+                  <div className="mt-auto pt-2">
+                    <Button
+                      variant="secondary"
+                      className="w-full h-9 text-xs font-semibold bg-secondary/50 hover:bg-secondary text-secondary-foreground"
                       onClick={() => triggerExpenseFromAccount(acc)}
-                      className="text-xs font-bold text-primary hover:underline tracking-wide"
                     >
-                      ADICIONAR DESPESA
-                    </button>
+                      <Plus className="size-3.5 mr-1.5" />
+                      Adicionar despesa
+                    </Button>
                   </div>
                 </Card>
               );
@@ -476,15 +483,6 @@ export const AccountsPage = () => {
                     {formColor === c ? '✓' : ''}
                   </button>
                 ))}
-                <label className="px-3 py-1.5 rounded-full border border-border text-xs font-medium cursor-pointer hover:bg-muted">
-                  Outros
-                  <input
-                    type="color"
-                    value={formColor.startsWith('#') ? formColor : '#6366f1'}
-                    onChange={(e) => setFormColor(e.target.value)}
-                    className="sr-only"
-                  />
-                </label>
               </div>
             </div>
 

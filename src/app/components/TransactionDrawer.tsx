@@ -26,9 +26,9 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
-  SelectLabel,
 } from './ui/select';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -722,9 +722,12 @@ export const TransactionDrawer = ({
                             </SelectItem>
                           ))}
                           {accounts.length > 0 && walletOptions.length > 0 && (
-                            <SelectLabel className="px-2 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                              Outras / legado
-                            </SelectLabel>
+                            <>
+                              <SelectSeparator />
+                              <div className="px-2 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                                Outras / legado
+                              </div>
+                            </>
                           )}
                           {walletOptions.map((w) => (
                             <SelectItem key={`leg-${w}`} value={`${LEGACY_PAYMENT_PREFIX}${w}`}>

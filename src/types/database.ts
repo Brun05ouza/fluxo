@@ -1,5 +1,8 @@
 export type TransactionType = 'expense' | 'income';
 
+/** Período da recorrência (detalhes no formulário expandido) */
+export type RecurringInterval = 'MONTH' | 'WEEK';
+
 /** Mindful Finance: tipo de gasto (despesas) */
 export type SpendingType = 'ESSENTIAL' | 'OPTIONAL' | 'EMOTIONAL';
 
@@ -18,6 +21,40 @@ export interface UserProfile {
   updated_at: string;
 }
 
+/** Tipo de conta (referência Mobills) */
+export type AccountType =
+  | 'CHECKING'
+  | 'CASH'
+  | 'SAVINGS'
+  | 'INVESTMENT'
+  | 'MEAL_VOUCHER'
+  | 'OTHER'
+  | 'CREDIT_CARD';
+
+export const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
+  { value: 'CHECKING', label: 'Conta corrente' },
+  { value: 'CASH', label: 'Dinheiro' },
+  { value: 'CREDIT_CARD', label: 'Cartão de crédito' },
+  { value: 'SAVINGS', label: 'Poupança' },
+  { value: 'INVESTMENT', label: 'Investimentos' },
+  { value: 'MEAL_VOUCHER', label: 'VR / VA' },
+  { value: 'OTHER', label: 'Outros' },
+];
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  institution_key: string;
+  account_type: AccountType;
+  color: string;
+  initial_balance: number;
+  credit_limit: number | null;
+  include_in_home_total: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Transaction {
   id: string;
   user_id: string;
@@ -27,11 +64,24 @@ export interface Transaction {
   amount: number;
   date: string;
   payment_method: string;
+  account_id?: string | null;
   tags: string[];
   is_recurring: boolean;
   spending_type?: SpendingType | null;
+  /** false = não paga (despesa) ou não recebida (receita) */
+  is_paid?: boolean;
+  is_ignored?: boolean;
+  recurring_count?: number | null;
+  recurring_interval?: RecurringInterval | null;
+  attachment_url?: string | null;
   created_at: string;
 }
+
+/** Payload do formulário: envia também opção de criar conta fixa (não é coluna SQL) */
+export type TransactionSavePayload = Omit<Transaction, 'id' | 'user_id' | 'created_at'> & {
+  create_fixed_expense?: boolean;
+  attachmentFile?: File | null;
+};
 
 export interface Budget {
   id: string;

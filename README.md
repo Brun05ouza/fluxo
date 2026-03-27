@@ -6,6 +6,10 @@ Aplicação de controle financeiro com autenticação Supabase, transações e o
 
 Veja [docs/ESTRUTURA_DO_PROJETO.md](docs/ESTRUTURA_DO_PROJETO.md) para a organização das pastas.
 
+## Cérebro do projeto (Obsidian)
+
+O mapa de domínio, links entre áreas e caminhos “certos” no código está no vault **`Fluxo/`** (abra essa pasta no Obsidian; entrada: `Fluxo/Índice - Mapa do cérebro.md`). No Cursor, a regra `.cursor/rules/obsidian-cerebro-fluxo.mdc` orienta a IA a consultar esse vault antes de mudanças amplas.
+
 ## Executar
 
 Run `npm i` to install the dependencies.

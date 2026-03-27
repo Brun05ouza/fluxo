@@ -138,15 +138,15 @@ export const CATEGORIAS_PLAYBOOK: TourPlaybook = {
 
 export const RELATORIOS_PLAYBOOK: TourPlaybook = {
   id: 'VER_RELATORIOS',
-  title: 'Relatórios',
+  title: 'Análise',
   triggers: ['relatórios', 'relatório', 'onde gastando mais'],
   steps: [
     {
       id: 'nav-reports',
-      route: '/reports',
+      route: '/reports/analise',
       selector: 'fluxia-reports-page',
-      title: 'Relatórios',
-      body: 'Aqui você vê comparação mensal, categorias mais caras e relatório por comportamento (Essencial, Opcional, Emocional).',
+      title: 'Análise',
+      body: 'Na aba Análise você vê comparação mensal, categorias mais caras e relatório por comportamento (Essencial, Opcional, Emocional).',
       placement: 'bottom',
     },
   ],
@@ -189,7 +189,7 @@ export const ENTENDER_RELATORIO_PLAYBOOK: TourPlaybook = {
   steps: [
     {
       id: 'nav-reports',
-      route: '/reports',
+      route: '/reports/analise',
       selector: 'fluxia-reports-page',
       title: 'Relatório por comportamento',
       body: 'Os gastos são classificados em Essencial (necessário), Opcional (conforto) e Emocional (impulso). Marque o tipo em cada transação para ver a análise.',

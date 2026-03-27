@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ArrowLeftRight,
-  PieChart,
+  Wallet,
   Target,
   Settings,
   LogOut,
@@ -19,6 +19,8 @@ import {
   HelpCircle,
   Pin,
   PinOff,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,16 +72,19 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, dataTour }
   </button>
 );
 
-export const AppLayout = ({ 
-  children, 
+const novaTxMenuContentClass =
+  'flex items-center gap-2 w-full cursor-pointer font-semibold rounded-lg';
+
+export const AppLayout = ({
+  children,
   onLogout,
   onAddTransaction,
-  onHelpClick
-}: { 
-  children: React.ReactNode, 
-  onLogout: () => void,
-  onAddTransaction: () => void,
-  onHelpClick?: () => void
+  onHelpClick,
+}: {
+  children: React.ReactNode;
+  onLogout: () => void;
+  onAddTransaction: (type?: 'income' | 'expense') => void;
+  onHelpClick?: () => void;
 }) => {
   const [pinned, setPinned] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -133,7 +138,7 @@ export const AppLayout = ({
     { path: '/import', icon: Upload, label: 'Importar', dataTour: 'fluxia-nav-import' },
     { path: '/fixed-expenses', icon: FileText, label: 'Contas fixas' },
     { path: '/budgets', icon: Target, label: 'Orçamentos' },
-    { path: '/reports', icon: PieChart, label: 'Relatórios' },
+    { path: '/reports', icon: Wallet, label: 'Contas' },
     { path: '/settings', icon: Settings, label: 'Configurações' },
   ];
 
@@ -144,6 +149,8 @@ export const AppLayout = ({
     navigate(path);
     setMobileMenuOpen(false);
   };
+
+  const mobileNovaMenuClose = () => setMobileMenuOpen(false);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden relative">
@@ -187,7 +194,52 @@ export const AppLayout = ({
           )}
         </div>
 
-        <nav className="flex-1 px-2 space-y-1 mt-1">
+        <div className={cn('px-2 pb-3 shrink-0', collapsed && 'px-1.5')}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-tour="fluxia-btn-nova-transacao"
+                title={collapsed ? 'Nova transação' : undefined}
+                className={cn(
+                  'flex items-center justify-center w-full rounded-[var(--radius)] font-semibold transition-all',
+                  'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-primary/35',
+                  'hover:scale-[1.02] active:scale-[0.98]',
+                  collapsed ? 'h-12 px-2' : 'h-12 px-4 gap-2'
+                )}
+              >
+                <PlusCircle size={collapsed ? 22 : 20} className="shrink-0" />
+                {!collapsed && <span className="whitespace-nowrap">Nova transação</span>}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              side={collapsed ? 'right' : 'bottom'}
+              sideOffset={8}
+              className="w-56 p-2"
+            >
+              <p className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 uppercase tracking-wide">
+                Tipo de lançamento
+              </p>
+              <DropdownMenuItem
+                className={cn(novaTxMenuContentClass, 'text-emerald-700 dark:text-emerald-400 focus:bg-emerald-500/15')}
+                onClick={() => onAddTransaction('income')}
+              >
+                <TrendingUp size={18} className="shrink-0" />
+                Receita
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={cn(novaTxMenuContentClass, 'text-red-700 dark:text-red-400 focus:bg-red-500/15')}
+                onClick={() => onAddTransaction('expense')}
+              >
+                <TrendingDown size={18} className="shrink-0" />
+                Despesa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <nav className="flex-1 px-2 space-y-1 mt-1 min-h-0 overflow-y-auto">
           {menuItems.map((item) => (
             <SidebarItem
               key={item.path}
@@ -233,13 +285,55 @@ export const AppLayout = ({
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="w-72 h-full bg-background/90 backdrop-blur-xl border-r border-border/50 p-6 flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
               <FluxoBrand logoSize="md" textSize="lg" />
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <nav className="flex-1 space-y-2">
+            <div className="mb-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    data-tour="fluxia-btn-nova-transacao"
+                    className={cn(
+                      'flex items-center justify-center w-full h-12 px-4 gap-2 rounded-[var(--radius)] font-semibold transition-all',
+                      'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25'
+                    )}
+                  >
+                    <PlusCircle size={20} />
+                    Nova transação
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56 p-2">
+                  <p className="text-[11px] font-medium text-muted-foreground px-2 py-1.5 uppercase tracking-wide">
+                    Tipo de lançamento
+                  </p>
+                  <DropdownMenuItem
+                    className={cn(novaTxMenuContentClass, 'text-emerald-700 dark:text-emerald-400 focus:bg-emerald-500/15')}
+                    onClick={() => {
+                      onAddTransaction('income');
+                      mobileNovaMenuClose();
+                    }}
+                  >
+                    <TrendingUp size={18} className="shrink-0" />
+                    Receita
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={cn(novaTxMenuContentClass, 'text-red-700 dark:text-red-400 focus:bg-red-500/15')}
+                    onClick={() => {
+                      onAddTransaction('expense');
+                      mobileNovaMenuClose();
+                    }}
+                  >
+                    <TrendingDown size={18} className="shrink-0" />
+                    Despesa
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <nav className="flex-1 space-y-2 min-h-0 overflow-y-auto">
               {menuItems.map((item) => (
                 <SidebarItem
                   key={item.path}
@@ -279,24 +373,6 @@ export const AppLayout = ({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <Button 
-              size="sm" 
-              className="hidden sm:flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:scale-105 active:scale-95"
-              onClick={onAddTransaction}
-              data-tour="fluxia-btn-nova-transacao"
-            >
-              <PlusCircle size={18} />
-              Nova Transação
-            </Button>
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              className="sm:hidden text-primary"
-              onClick={onAddTransaction}
-              data-tour="fluxia-btn-nova-transacao"
-            >
-              <PlusCircle size={24} />
-            </Button>
             <Button size="icon" variant="ghost" className="relative hover:bg-muted/50 rounded-full" title="Notificações (em breve)">
               <Bell size={20} />
             </Button>

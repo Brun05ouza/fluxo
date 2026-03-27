@@ -29,7 +29,7 @@ const INTENTS: IntentConfig[] = [
       /(adicionar|nova|registrar) (gasto|transação|receita|lançamento)/i,
       /como (adiciono|adicionar) (um )?gasto/i,
     ],
-    text: 'Para adicionar um lançamento: clique no botão "Nova Transação" no topo. Preencha valor, descrição, data e categoria (Gasto ou Receita).',
+    text: 'Para adicionar um lançamento: no menu lateral, em "Nova transação", escolha Receita ou Despesa e preencha valor, descrição, data e categoria.',
     hasGuide: true,
     openPage: '/',
   },
@@ -55,9 +55,9 @@ const INTENTS: IntentConfig[] = [
       /onde (estou )?gastando mais/i,
       /(onde|em que) (gasto|estou gastando)/i,
     ],
-    text: 'Os relatórios ficam no menu em "Relatórios". Lá você vê onde está gastando mais, categorias mais caras e evolução por tipo (Essencial, Opcional, Emocional).',
+    text: 'No menu "Contas", abra a aba "Análise" para ver onde está gastando mais, categorias mais caras e evolução por tipo (Essencial, Opcional, Emocional).',
     hasGuide: true,
-    openPage: '/reports',
+    openPage: '/reports/analise',
   },
   {
     intent: 'GERENCIAR_CATEGORIAS',
@@ -100,7 +100,7 @@ const INTENTS: IntentConfig[] = [
     ],
     text: 'No relatório por comportamento, os gastos são classificados em Essencial (necessário), Opcional (conforto) e Emocional (impulso). Marque o tipo ao editar cada transação para ver a análise.',
     hasGuide: true,
-    openPage: '/reports',
+    openPage: '/reports/analise',
   },
 ];
 

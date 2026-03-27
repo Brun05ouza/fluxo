@@ -1,5 +1,34 @@
 import type { Transaction, Budget } from '@/types/database';
 
+/** Lançamentos cujo `date` cai no mês indicado (ano + mês 1–12). Ignora outros filtros de UI. */
+export function filterTransactionsByMonth(
+  transactions: Transaction[],
+  year: number,
+  month1to12: number
+): Transaction[] {
+  const prefix = `${year}-${String(month1to12).padStart(2, '0')}`;
+  return transactions.filter((t) => t.date.startsWith(prefix));
+}
+
+/** Último dia do mês em `yyyy-mm-dd` (comparável com `Transaction.date`). */
+export function endOfMonthDateString(year: number, month1to12: number): string {
+  const last = new Date(year, month1to12, 0);
+  const y = last.getFullYear();
+  const m = String(last.getMonth() + 1).padStart(2, '0');
+  const d = String(last.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Todos os lançamentos com data até o fim do mês selecionado (saldo acumulado nesse ponto). */
+export function filterTransactionsThroughMonthEnd(
+  transactions: Transaction[],
+  year: number,
+  month1to12: number
+): Transaction[] {
+  const end = endOfMonthDateString(year, month1to12);
+  return transactions.filter((t) => t.date <= end);
+}
+
 export function getIncomeTotal(transactions: Transaction[]): number {
   return transactions.filter((t) => t.amount > 0).reduce((sum, t) => sum + Number(t.amount), 0);
 }

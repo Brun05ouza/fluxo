@@ -88,7 +88,7 @@ export const Dashboard = ({
   onGoToImport,
   onGuideClick,
 }: {
-  onAddTransaction?: () => void;
+  onAddTransaction?: (type?: 'income' | 'expense') => void;
   onGoToTransactions?: () => void;
   onGoToBudgets?: () => void;
   onGoToFixedExpenses?: () => void;

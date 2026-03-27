@@ -10,6 +10,7 @@ import {
   Moon,
   Sun,
   RotateCcw,
+  Wallet,
 } from 'lucide-react';
 import { Card, Button, Input, cn } from '@/app/components/ui';
 import {
@@ -87,8 +88,10 @@ export const Settings = () => {
     if (e2) errors.push(e2.message);
     const { error: e3 } = await supabase.from('fixed_expenses').delete().eq('user_id', uid);
     if (e3) errors.push(e3.message);
-    const { error: e4 } = await supabase.from('financial_profile').delete().eq('id', uid);
+    const { error: e4 } = await supabase.from('accounts').delete().eq('user_id', uid);
     if (e4) errors.push(e4.message);
+    const { error: e5 } = await supabase.from('financial_profile').delete().eq('id', uid);
+    if (e5) errors.push(e5.message);
     setResetting(false);
     if (errors.length > 0) {
       toast.error('Erro ao restaurar: ' + errors.join('; '));
@@ -150,6 +153,25 @@ export const Settings = () => {
         <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={toggleTheme}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+        </Button>
+      </Card>
+
+      <Card className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <Wallet size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Contas e carteiras</h3>
+            <p className="text-sm text-foreground/80">
+              Cadastre bancos e carteiras para vincular aos lançamentos (sem sync automático).
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/reports')}>
+          <Wallet size={18} />
+          Gerenciar contas
+          <ArrowRight size={16} />
         </Button>
       </Card>
 
@@ -253,7 +275,7 @@ export const Settings = () => {
           <div>
             <h3 className="text-lg font-bold text-destructive">Restaurar conta</h3>
             <p className="text-sm text-foreground/80">
-              Remove todos os seus dados do site: transações, orçamentos, contas fixas e perfil financeiro. A conta de acesso permanece.
+              Remove todos os seus dados do site: transações, orçamentos, contas (carteiras), contas fixas e perfil financeiro. A conta de acesso permanece.
             </p>
           </div>
         </div>
@@ -268,7 +290,7 @@ export const Settings = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Restaurar conta?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente: transações, orçamentos, contas fixas e perfil financeiro. Sua conta de login continuará existindo.
+                Esta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente: transações, orçamentos, contas cadastradas, contas fixas e perfil financeiro. Sua conta de login continuará existindo.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   ResponsiveContainer,
   BarChart,
@@ -24,6 +25,7 @@ import {
   getSpendingTypeEvolution,
 } from '@/lib/mindful-utils';
 import { formatCurrencyBRL } from '@/lib/format-currency';
+import type { ReportsOutletContext } from './reports-layout';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -37,15 +39,8 @@ const SPENDING_TYPE_LABELS: Record<string, string> = {
 };
 const SPENDING_TYPE_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
 
-export const Reports = ({
-  onGoToImport,
-  onAddTransaction,
-  onGuideClick,
-}: {
-  onGoToImport?: () => void;
-  onAddTransaction?: () => void;
-  onGuideClick?: () => void;
-} = {}) => {
+export const Reports = () => {
+  const { onGoToImport, onAddTransaction, onGuideClick } = useOutletContext<ReportsOutletContext>();
   const { user } = useAuth();
   const { transactions, loading } = useTransactions(user?.id);
 
@@ -123,9 +118,9 @@ export const Reports = ({
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Relatórios</h2>
+            <h2 className="text-2xl font-bold">Análise</h2>
             <p className="text-foreground/80">
-              Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
+              Comparação mensal, categorias mais caras e comportamento (Essencial, Opcional, Emocional).
             </p>
           </div>
           {monthSelector}
@@ -146,9 +141,9 @@ export const Reports = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" data-tour="fluxia-reports-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Relatórios</h2>
+          <h2 className="text-2xl font-bold">Análise</h2>
           <p className="text-foreground/80">
-            Análise simples dos seus gastos. Comparação mensal, categorias e comportamento.
+            Comparação mensal, categorias mais caras e comportamento (Essencial, Opcional, Emocional).
           </p>
         </div>
         {monthSelector}

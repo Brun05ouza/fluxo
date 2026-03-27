@@ -216,7 +216,7 @@ export function getRecommendedNextStep(
         import_extrato: '/import',
         categorizar_transacoes: '/transactions',
         criar_orcamento: '/budgets',
-        visualizar_insight: '/reports',
+        visualizar_insight: '/reports/analise',
       };
       return { mission: m, cta: ctas[id], route: routes[id] };
     }

@@ -20,9 +20,9 @@ import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import {
   getIncomeTotal,
   getExpenseTotal,
-  getBalance,
   getPieDataFromTransactions,
 } from '@/lib/transaction-utils';
+import { getEffectiveCashBalance } from '@/features/finance/domain/balance-engine';
 import { getSpendingTypeDistribution } from '@/lib/mindful-utils';
 import { getCategoryIcon } from '@/lib/category-icons';
 import { useForecast } from '@/hooks/useForecast';
@@ -97,7 +97,7 @@ export const Dashboard = ({
   onGuideClick?: () => void;
 }) => {
   const { user } = useAuth();
-  const { transactions, loading } = useTransactions(user?.id);
+  const { transactions, loading } = useTransactions();
   const { budgets } = useBudgets(user?.id);
   const { expenses: fixedExpenses } = useFixedExpenses(user?.id);
   const { profile: financialProfile } = useFinancialProfile(user?.id);
@@ -117,7 +117,8 @@ export const Dashboard = ({
   const forecast = useForecast(currentMonthKey, transactions, budgets);
   const income = getIncomeTotal(txForMonth);
   const expense = getExpenseTotal(txForMonth);
-  const balance = getBalance(txForMonth);
+  /** Líquido já movimentado no caixa neste mês (não inclui a pagar / a receber). */
+  const balance = getEffectiveCashBalance(txForMonth);
   const dataPie = getPieDataFromTransactions(txForMonth);
   const latestTx = txForMonth
     .slice()

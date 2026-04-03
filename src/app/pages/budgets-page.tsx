@@ -47,7 +47,7 @@ const BUDGET_ICONS: Record<string, React.ElementType> = {
 export const Budgets = () => {
   const { user } = useAuth();
   const { budgets, loading, addBudget, updateBudget, deleteBudget } = useBudgets(user?.id);
-  const { transactions } = useTransactions(user?.id);
+  const { transactions } = useTransactions();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const forecast = useForecast(currentMonth, transactions, budgets);

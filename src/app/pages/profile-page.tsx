@@ -60,7 +60,7 @@ function StatCard({
 export const Profile = () => {
   const { user, updateProfile } = useAuth();
   const { profile, upsertProfile } = useFinancialProfile(user?.id);
-  const { transactions } = useTransactions(user?.id);
+  const { transactions } = useTransactions();
   const { budgets } = useBudgets(user?.id);
   const { expenses: fixedExpenses } = useFixedExpenses(user?.id);
 

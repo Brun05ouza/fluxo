@@ -1,4 +1,5 @@
 import type { Account, Transaction } from '@/types/database';
+import { getAccountCashFlowFromTransactions } from '@/features/finance/domain/balance-engine';
 
 function safeNum(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
@@ -8,8 +9,6 @@ function safeNum(v: unknown): number {
 
 export function getAccountBalance(account: Account, transactions: Transaction[]): number {
   const base = safeNum(account.initial_balance);
-  const flow = transactions
-    .filter((t) => t.account_id === account.id)
-    .reduce((s, t) => s + safeNum(t.amount), 0);
+  const flow = getAccountCashFlowFromTransactions(account.id, transactions);
   return Math.round((base + flow) * 100) / 100;
 }

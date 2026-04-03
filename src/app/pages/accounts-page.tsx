@@ -89,8 +89,8 @@ function InstitutionOrb({ inst, size = 'md' }: { inst: FinancialInstitution; siz
 export const AccountsPage = () => {
   const { onAddTransaction } = useOutletContext<ReportsOutletContext>();
   const { user } = useAuth();
-  const { accounts, loading, addAccount, updateAccount, deleteAccount } = useAccounts(user?.id);
-  const { transactions } = useTransactions(user?.id);
+  const { accounts, loading, addAccount, updateAccount, deleteAccount } = useAccounts();
+  const { transactions } = useTransactions();
 
   const [institutionDialogOpen, setInstitutionDialogOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);

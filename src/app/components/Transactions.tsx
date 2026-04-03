@@ -44,10 +44,10 @@ import { getCategoryIcon } from '@/lib/category-icons';
 import {
   getIncomeTotal,
   getExpenseTotal,
-  getBalance,
   filterTransactionsByMonth,
   filterTransactionsThroughMonthEnd,
 } from '@/lib/transaction-utils';
+import { getEffectiveCashBalance } from '@/features/finance/domain/balance-engine';
 import { CATEGORIES } from '@/types/database';
 import type { Transaction, TransactionSavePayload } from '@/types/database';
 import { uploadTransactionAttachment } from '@/lib/transaction-attachment';
@@ -76,7 +76,7 @@ interface TransactionsProps {
 
 export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: TransactionsProps) => {
   const { user } = useAuth();
-  const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions(user?.id);
+  const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions();
   const now = new Date();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -124,9 +124,12 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
   const summaryIncome = getIncomeTotal(monthBaseTransactions);
   const summaryExpense = getExpenseTotal(monthBaseTransactions);
   const monthlyBalance = summaryIncome - summaryExpense;
-  /** Saldo acumulado: todas as movimentações até o último dia do mês exibido. */
-  const cumulativeBalance = useMemo(
-    () => getBalance(filterTransactionsThroughMonthEnd(transactions, summaryYear, summaryMonth)),
+  /** Saldo em caixa acumulado: só quitados até o último dia do mês exibido. */
+  const cumulativeCashBalance = useMemo(
+    () =>
+      getEffectiveCashBalance(
+        filterTransactionsThroughMonthEnd(transactions, summaryYear, summaryMonth)
+      ),
     [transactions, summaryYear, summaryMonth]
   );
 
@@ -314,16 +317,18 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
               <Building2 className="size-5" strokeWidth={2} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">Saldo atual</p>
+              <p className="text-xs font-medium text-muted-foreground">Saldo em caixa</p>
               <p
                 className={cn(
                   'text-lg font-bold tabular-nums leading-tight',
-                  cumulativeBalance >= 0 ? 'text-foreground' : 'text-destructive'
+                  cumulativeCashBalance >= 0 ? 'text-foreground' : 'text-destructive'
                 )}
               >
-                {formatCurrencyBRL(cumulativeBalance)}
+                {formatCurrencyBRL(cumulativeCashBalance)}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Até o fim de {MONTH_NAMES[summaryMonth - 1]}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Só quitados até o fim de {MONTH_NAMES[summaryMonth - 1]}
+              </p>
             </div>
             <ChevronRight className="size-4 text-muted-foreground/50 shrink-0" aria-hidden />
           </Card>
@@ -367,7 +372,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
               >
                 {formatCurrencyBRL(monthlyBalance)}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Receitas − despesas (mês)</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                No mês (inclui a pagar e a receber)
+              </p>
             </div>
             <ChevronRight className="size-4 text-muted-foreground/50 shrink-0" aria-hidden />
           </Card>

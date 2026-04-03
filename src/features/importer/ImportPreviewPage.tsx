@@ -15,7 +15,7 @@ export const ImportPreviewPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addTransactions } = useTransactions(user?.id);
+  const { addTransactions } = useTransactions();
   const stateRows = (location.state as { rows?: PreviewTxn[] })?.rows ?? [];
 
   const [rows, setRows] = useState<PreviewTxn[]>(stateRows);

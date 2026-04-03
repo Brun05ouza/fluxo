@@ -13,7 +13,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 export const ImportPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { fetchByDateRange } = useTransactions(user?.id);
+  const { fetchByDateRange } = useTransactions();
   const [state, setState] = useState<'idle' | 'loading' | 'error' | 'empty' | 'ready'>('idle');
   const [error, setError] = useState<string | null>(null);
 

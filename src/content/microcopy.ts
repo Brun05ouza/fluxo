@@ -56,7 +56,7 @@ export const emptyStates = {
 export const labels = {
   kpiGastos: 'Gastos do mês',
   kpiReceitas: 'Receitas',
-  kpiSaldo: 'Saldo atual',
+  kpiSaldo: 'Saldo em caixa',
   visaoDoMes: 'Visão do mês',
   acaoPrincipal: 'Ação principal do mês',
   scoreDoMes: 'Score financeiro do mês',

@@ -47,3 +47,35 @@ export function projectBalance(transactions: Transaction[]): BalanceProjection {
 
   return { effectiveBalance, pendingDelta, ignoredCount };
 }
+
+/** Soma líquida em caixa (só quitado; pendentes e ignorados ficam de fora). */
+export function getEffectiveCashBalance(transactions: Transaction[]): number {
+  return projectBalance(transactions).effectiveBalance;
+}
+
+/**
+ * Soma só o que já impactou caixa nesta conta (quitado + transferências quitadas).
+ * Despesas/receitas pendentes não entram até serem marcadas como pagas/recebidas.
+ */
+export function getAccountCashFlowFromTransactions(accountId: string, transactions: Transaction[]): number {
+  let sum = 0;
+  for (const tx of transactions) {
+    if (tx.account_id !== accountId) continue;
+
+    const core = toCore(tx);
+    if (core.settlement_status === 'ignored') continue;
+    if (core.settlement_status === 'pending') continue;
+
+    if (core.kind === 'transfer') {
+      sum += core.amount;
+      continue;
+    }
+
+    const impact = getCashImpact(core);
+    if (impact === 'inflow' || impact === 'outflow') {
+      sum += core.amount;
+    }
+  }
+
+  return sum;
+}

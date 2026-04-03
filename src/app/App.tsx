@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useTransactions } from '@/hooks/useTransactions';
+import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions';
+import { AccountsProvider } from '@/hooks/useAccounts';
 import { useFixedExpenses } from '@/hooks/useFixedExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
 import { computeForecast, getAlertMessageForCategory } from '@/lib/forecast';
@@ -25,12 +26,11 @@ import type { Transaction, TransactionSavePayload } from '@/types/database';
 import { materializeRecurringDates } from '@/lib/transaction-dates';
 import { uploadTransactionAttachment } from '@/lib/transaction-attachment';
 
-const AppContent = () => {
+/** Rotas principais: precisa estar dentro de `TransactionsProvider`. */
+const FluxoShell = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, loading, signOut } = useAuth();
-  const { profile, loading: profileLoading, refetch: refetchProfile } = useFinancialProfile(user?.id);
-  const { transactions, addTransaction, addTransactions, updateTransaction } = useTransactions(user?.id);
+  const { user, signOut } = useAuth();
+  const { transactions, addTransaction, addTransactions, updateTransaction } = useTransactions();
   const { addExpense } = useFixedExpenses(user?.id);
   const { budgets } = useBudgets(user?.id);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
@@ -158,39 +158,7 @@ const AppContent = () => {
     return { error: null, parcelCount: rows.length };
   };
 
-  if (loading || (user && profileLoading)) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
-        <p className="text-sm text-muted-foreground animate-pulse">
-          {loading ? 'Verificando sessão…' : 'Carregando seu perfil…'}
-        </p>
-      </div>
-    );
-  }
-
-  if (!user) return <Login />;
-
-  const needsOnboarding = !profile || profile.onboarding_completed_at == null;
-
-  if (needsOnboarding) {
-    return (
-      <>
-        <FirstAccessOnboarding
-          userId={user.id}
-          onComplete={async () => {
-            await refetchProfile();
-          }}
-        />
-        <Toaster position="top-right" />
-      </>
-    );
-  }
-
-  if (location.pathname.startsWith('/admin')) {
-    if (!profile?.is_admin) return <Navigate to="/" replace />;
-    return <AdminPage userId={user.id} />;
-  }
+  if (!user) return null;
 
   return (
     <TourProvider>
@@ -297,6 +265,54 @@ const AppContent = () => {
       <FluxiaDrawer open={fluxiaOpen} onOpenChange={setFluxiaOpen} />
       <AdminGate currentUserId={user.id} />
     </TourProvider>
+  );
+};
+
+const AppContent = () => {
+  const location = useLocation();
+  const { user, loading } = useAuth();
+  const { profile, loading: profileLoading, refetch: refetchProfile } = useFinancialProfile(user?.id);
+
+  if (loading || (user && profileLoading)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full" />
+        <p className="text-sm text-muted-foreground animate-pulse">
+          {loading ? 'Verificando sessão…' : 'Carregando seu perfil…'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) return <Login />;
+
+  const needsOnboarding = !profile || profile.onboarding_completed_at == null;
+
+  if (needsOnboarding) {
+    return (
+      <>
+        <FirstAccessOnboarding
+          userId={user.id}
+          onComplete={async () => {
+            await refetchProfile();
+          }}
+        />
+        <Toaster position="top-right" />
+      </>
+    );
+  }
+
+  if (location.pathname.startsWith('/admin')) {
+    if (!profile?.is_admin) return <Navigate to="/" replace />;
+    return <AdminPage userId={user.id} />;
+  }
+
+  return (
+    <TransactionsProvider userId={user.id}>
+      <AccountsProvider userId={user.id}>
+        <FluxoShell />
+      </AccountsProvider>
+    </TransactionsProvider>
   );
 };
 

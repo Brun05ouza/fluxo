@@ -42,7 +42,7 @@ const SPENDING_TYPE_COLORS = ['#10b981', '#3b82f6', '#f59e0b'];
 export const Reports = () => {
   const { onGoToImport, onAddTransaction, onGuideClick } = useOutletContext<ReportsOutletContext>();
   const { user } = useAuth();
-  const { transactions, loading } = useTransactions(user?.id);
+  const { transactions, loading } = useTransactions();
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());

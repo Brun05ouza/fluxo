@@ -7,10 +7,12 @@ export interface KPIItem {
   label: string;
   value: string;
   variant?: KPIVariant;
+  /** Explica em uma linha o que o número significa (acessível para iniciantes). */
+  hint?: string;
 }
 
 interface KPIGroupProps {
-  items: [KPIItem, KPIItem, KPIItem];
+  items: KPIItem[];
   className?: string;
 }
 
@@ -20,15 +22,23 @@ const variantClasses: Record<KPIVariant, string> = {
   negative: 'text-destructive',
 };
 
+const gridForCount = (n: number) =>
+  n <= 2
+    ? 'grid-cols-1 sm:grid-cols-2'
+    : n === 3
+      ? 'grid-cols-1 sm:grid-cols-3'
+      : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4';
+
 export function KPIGroup({ items, className }: KPIGroupProps) {
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-4', className)}>
+    <div className={cn('grid gap-4', gridForCount(items.length), className)}>
       {items.map((item, i) => (
-        <Card key={i} className="p-5 space-y-1">
+        <Card key={i} className="flex flex-col justify-center p-5 min-h-[7.5rem] space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-          <p className={cn('text-2xl font-bold', variantClasses[item.variant ?? 'default'])}>
+          <p className={cn('text-2xl font-bold tabular-nums', variantClasses[item.variant ?? 'default'])}>
             {item.value}
           </p>
+          {item.hint ? <p className="text-xs text-muted-foreground leading-snug pt-0.5">{item.hint}</p> : null}
         </Card>
       ))}
     </div>

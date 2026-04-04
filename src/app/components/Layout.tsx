@@ -54,21 +54,53 @@ interface SidebarItemProps {
   dataTour?: string;
 }
 
+const sidebarLabelClass = (collapsed: boolean) =>
+  cn(
+    'min-w-0 font-medium whitespace-nowrap overflow-hidden text-left transition-[max-width,opacity] duration-300 ease-out',
+    collapsed ? 'max-w-0 min-w-0 shrink opacity-0' : 'max-w-[220px] opacity-100'
+  );
+
+/** Mesma grade de todos os itens da sidebar: padding e coluna de ícone fixa. */
+const sidebarRowClass = 'flex items-center w-full rounded-[var(--radius)] px-2 py-2.5 gap-0';
+/** Linha da marca + CTA: altura para ícone 44px + padding. */
+const sidebarProminentRowClass = cn(sidebarRowClass, 'min-h-16 justify-center');
+/** Célula de ícone maior só na marca e no Nova transação (nav segue 40px). */
+const sidebarProminentIconCellClass =
+  'flex h-11 w-11 shrink-0 items-center justify-center pointer-events-none';
+const sidebarIconCellClass =
+  'flex h-10 w-10 shrink-0 items-center justify-center pointer-events-none';
+
+/**
+ * Rótulo alinhado à célula do ícone destacada (44px): texto maior e centralizado na vertical.
+ */
+const sidebarAlignedLabelClass = (
+  collapsed: boolean,
+  weight: 'semibold' | 'bold' = 'semibold'
+) =>
+  cn(
+    sidebarLabelClass(collapsed),
+    'inline-flex h-11 items-center text-base leading-none',
+    weight === 'semibold' ? 'font-semibold' : 'font-bold'
+  );
+
 const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, dataTour }: SidebarItemProps) => (
   <button
     onClick={onClick}
     {...(dataTour ? { 'data-tour': dataTour } : {})}
     title={collapsed ? label : undefined}
     className={cn(
-      "flex items-center w-full rounded-[var(--radius)] transition-all group",
-      collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5",
+      sidebarRowClass,
+      'group',
+      collapsed && 'justify-center',
       active
-        ? "bg-primary text-primary-foreground shadow-sm"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        ? 'bg-primary text-primary-foreground shadow-sm'
+        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
     )}
   >
-    <Icon size={20} className={cn("shrink-0", active ? "" : "group-hover:scale-110 transition-transform")} />
-    {!collapsed && <span className="font-medium whitespace-nowrap">{label}</span>}
+    <span className={sidebarIconCellClass}>
+      <Icon size={20} className="shrink-0" />
+    </span>
+    <span className={sidebarLabelClass(collapsed ?? false)}>{label}</span>
   </button>
 );
 
@@ -163,38 +195,48 @@ export const AppLayout = ({
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
         className={cn(
-          "hidden md:flex flex-col border-r border-border/50 bg-background/60 backdrop-blur-xl transition-all duration-300 z-20",
-          collapsed ? "w-20" : "w-64"
+          'hidden md:flex flex-col border-r border-border/50 bg-background/60 backdrop-blur-xl z-20 transition-[width] duration-300 ease-out',
+          collapsed ? 'w-[4.75rem]' : 'w-64'
         )}
       >
-        {/* Logo + Pin */}
-        <div className={cn("p-4 flex items-center", collapsed ? "justify-center" : "justify-between px-5")}>
-          {!collapsed ? (
+        {/* Logo + Pin: mesmo encadeamento que SidebarItem (ícone + span de rótulo); pin absoluto para não empurrar o texto */}
+        <div className={cn(sidebarProminentRowClass, 'text-foreground relative')}>
+          <span className={sidebarProminentIconCellClass}>
+            <img
+              src="/fluxo-icon.png?v=2"
+              alt=""
+              className="h-11 w-11 max-h-11 max-w-11 object-contain object-center"
+              aria-hidden
+            />
+          </span>
+          {!collapsed && (
             <>
-              <FluxoBrand logoSize="md" textSize="lg" />
+              <span
+                className={cn(
+                  sidebarAlignedLabelClass(false, 'bold'),
+                  'tracking-tight fluxo-brand-text pr-10'
+                )}
+              >
+                Fluxo
+              </span>
               <button
+                type="button"
                 onClick={handleTogglePin}
                 title={pinned ? 'Desafixar sidebar' : 'Fixar sidebar'}
                 className={cn(
-                  "p-1.5 rounded-lg transition-colors",
+                  'absolute right-1 top-1/2 z-10 -translate-y-1/2 flex size-8 items-center justify-center rounded-lg transition-colors',
                   pinned
-                    ? "text-primary hover:bg-primary/10"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? 'text-primary hover:bg-primary/10'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
                 {pinned ? <Pin size={16} /> : <PinOff size={16} />}
               </button>
             </>
-          ) : (
-            <img
-              src="/fluxo-icon.png?v=2"
-              alt="Fluxo"
-              className="w-16 h-16 object-contain"
-            />
           )}
         </div>
 
-        <div className={cn('px-2 pb-3 shrink-0', collapsed && 'px-1.5')}>
+        <div className="px-2 pb-3 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -202,14 +244,16 @@ export const AppLayout = ({
                 data-tour="fluxia-btn-nova-transacao"
                 title={collapsed ? 'Nova transação' : undefined}
                 className={cn(
-                  'flex items-center justify-center w-full rounded-[var(--radius)] font-semibold transition-all',
+                  sidebarProminentRowClass,
+                  'rounded-[var(--radius)]',
                   'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-primary/35',
-                  'hover:scale-[1.02] active:scale-[0.98]',
-                  collapsed ? 'h-12 px-2' : 'h-12 px-4 gap-2'
+                  'transition-colors'
                 )}
               >
-                <PlusCircle size={collapsed ? 22 : 20} className="shrink-0" />
-                {!collapsed && <span className="whitespace-nowrap">Nova transação</span>}
+                <span className={sidebarProminentIconCellClass}>
+                  <PlusCircle size={22} className="shrink-0" />
+                </span>
+                <span className={sidebarAlignedLabelClass(collapsed, 'semibold')}>Nova transação</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -253,30 +297,36 @@ export const AppLayout = ({
           ))}
         </nav>
 
-        <div className={cn("border-t border-border/50 space-y-1", collapsed ? "p-2" : "p-3")}>
+        <div className="border-t border-border/50 space-y-1 p-2">
           <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-            className={cn(
-              "flex items-center w-full rounded-[var(--radius)] transition-colors hover:bg-primary/5",
-              collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5"
-            )}
+            className={cn(sidebarRowClass, 'transition-colors hover:bg-primary/5', collapsed && 'justify-center')}
           >
-            {theme === 'dark'
-              ? <Sun size={20} className="shrink-0 text-muted-foreground" />
-              : <Moon size={20} className="shrink-0 text-muted-foreground" />}
-            {!collapsed && <span className="text-sm font-medium text-muted-foreground">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>}
+            <span className={sidebarIconCellClass}>
+              {theme === 'dark' ? (
+                <Sun size={20} className="shrink-0 text-muted-foreground" />
+              ) : (
+                <Moon size={20} className="shrink-0 text-muted-foreground" />
+              )}
+            </span>
+            <span className={cn(sidebarLabelClass(collapsed), 'text-sm text-muted-foreground')}>
+              {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+            </span>
           </button>
           <button
             onClick={onLogout}
             title="Sair"
             className={cn(
-              "flex items-center w-full rounded-[var(--radius)] transition-colors text-destructive hover:bg-destructive/10",
-              collapsed ? "justify-center px-2 py-3" : "gap-3 px-3 py-2.5"
+              sidebarRowClass,
+              'transition-colors text-destructive hover:bg-destructive/10',
+              collapsed && 'justify-center'
             )}
           >
-            <LogOut size={20} className="shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">Sair</span>}
+            <span className={sidebarIconCellClass}>
+              <LogOut size={20} className="shrink-0" />
+            </span>
+            <span className={cn(sidebarLabelClass(collapsed), 'text-sm')}>Sair</span>
           </button>
         </div>
       </aside>

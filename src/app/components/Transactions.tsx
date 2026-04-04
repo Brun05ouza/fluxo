@@ -53,6 +53,10 @@ import type { Transaction, TransactionSavePayload } from '@/types/database';
 import { uploadTransactionAttachment } from '@/lib/transaction-attachment';
 import { toast } from 'sonner';
 import { formatCurrencyBRL } from '@/lib/format-currency';
+import {
+  buildTransactionParcelLabelMap,
+  formatTransactionTitleWithParcel,
+} from '@/lib/transaction-parcel-label';
 
 const formatTableDate = (d: string) =>
   new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {
@@ -233,6 +237,8 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
       }),
     [filtered]
   );
+
+  const parcelLabelMap = useMemo(() => buildTransactionParcelLabelMap(transactions), [transactions]);
 
   if (loading) {
     return (
@@ -489,7 +495,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
                         </td>
                         <td className="px-3 py-2.5 align-middle">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium truncate">{tx.title}</span>
+                            <span className="font-medium truncate">
+                              {formatTransactionTitleWithParcel(tx, parcelLabelMap)}
+                            </span>
                             {tx.attachment_url ? (
                               <Paperclip
                                 className="size-3.5 shrink-0 text-primary opacity-80"

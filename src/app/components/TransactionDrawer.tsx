@@ -42,6 +42,7 @@ import { getCategoryIcon } from '@/lib/category-icons';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategories';
 
 const WALLETS_STORAGE_KEY = 'fluxo-custom-wallets-v1';
 const LEGACY_PAYMENT_PREFIX = '__legacy__::';
@@ -83,6 +84,7 @@ export const TransactionDrawer = ({
 }: TransactionDrawerProps) => {
   const { user } = useAuth();
   const { accounts } = useAccounts();
+  const { categories } = useCategories(user?.id);
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
@@ -106,6 +108,12 @@ export const TransactionDrawer = ({
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const expandDetails = () => setDetailsExpanded(true);
+    window.addEventListener('fluxia-tour-expand-tx-details', expandDetails);
+    return () => window.removeEventListener('fluxia-tour-expand-tx-details', expandDetails);
+  }, []);
 
   const hideTypeToggle = Boolean(!initialTransaction && presetType);
 
@@ -669,7 +677,7 @@ export const TransactionDrawer = ({
                           <SelectValue placeholder="Categoria" />
                         </SelectTrigger>
                         <SelectContent className="z-[120] max-h-64">
-                          {CATEGORIES.map((c) => {
+                          {categories.map((c) => {
                             const Ico = getCategoryIcon(c);
                             return (
                               <SelectItem key={c} value={c}>

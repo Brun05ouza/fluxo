@@ -67,10 +67,14 @@ const FluxoShell = () => {
   const [fluxiaOpen, setFluxiaOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const handler = () => handleAddTransaction('expense');
+    const handler = () => {
+      setTypePickerOpen(false);
+      setNewTransactionPreset(null);
+      setIsDrawerOpen(true);
+    };
     window.addEventListener('fluxia-tour-open-drawer', handler);
     return () => window.removeEventListener('fluxia-tour-open-drawer', handler);
-  }, [handleAddTransaction]);
+  }, []);
 
   const handleSaveTransaction = async (payload: TransactionSavePayload) => {
     const { create_fixed_expense, attachmentFile, ...rest } = payload;

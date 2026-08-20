@@ -11,8 +11,21 @@ import {
   Sun,
   RotateCcw,
   Wallet,
+  CalendarDays,
 } from 'lucide-react';
-import { Card, Button, Input, cn } from '@/app/components/ui';
+import { Card, Button, cn } from '@/app/components/ui';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -27,14 +40,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/app/components/ThemeProvider';
 import { supabase } from '@/lib/supabase';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
-import { formatCurrencyBRL } from '@/lib/format-currency';
+import { formatCurrencyBRL, maskBRLInput, parseBRLInput } from '@/lib/format-currency';
 import { toast } from 'sonner';
+
+const CURRENCIES = [
+  { value: 'BRL', label: 'Real brasileiro', symbol: 'R$' },
+  { value: 'USD', label: 'Dólar americano', symbol: '$' },
+  { value: 'EUR', label: 'Euro', symbol: '€' },
+] as const;
 
 export const Settings = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading, upsertProfile } = useFinancialProfile(user?.id);
   const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [payDay, setPayDay] = useState('1');
+  const [payDay, setPayDay] = useState('');
+  const [payDayOpen, setPayDayOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasFinanceChanges, setHasFinanceChanges] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -42,31 +62,42 @@ export const Settings = () => {
 
   useEffect(() => {
     if (profile !== undefined && profile !== null && !hasInitialized.current) {
-      setMonthlyIncome(profile.monthly_income ? String(profile.monthly_income) : '');
-      setPayDay(String(profile.pay_day || 1));
+      setMonthlyIncome(
+        profile.monthly_income
+          ? profile.monthly_income.toLocaleString('pt-BR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : ''
+      );
+      setPayDay(profile.pay_day ? String(profile.pay_day) : '');
       hasInitialized.current = true;
     } else if (!profileLoading && (profile === null || profile === undefined)) {
       setMonthlyIncome('');
-      setPayDay('1');
+      setPayDay('');
       hasInitialized.current = false;
     }
   }, [profile, profileLoading]);
 
-  const handleFinanceChange = () => {
-    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
-    const day = parseInt(payDay || '1', 10);
-    setHasFinanceChanges(
-      income !== (profile?.monthly_income ?? 0) || day !== (profile?.pay_day ?? 1)
-    );
-  };
-
   useEffect(() => {
-    handleFinanceChange();
+    const income = parseBRLInput(monthlyIncome);
+    const day = payDay ? parseInt(payDay, 10) : 0;
+    setHasFinanceChanges(
+      income !== (profile?.monthly_income ?? 0) || day !== (profile?.pay_day ?? 0)
+    );
   }, [monthlyIncome, payDay, profile]);
 
   const handleSaveFinance = async () => {
-    const income = parseFloat(monthlyIncome?.replace(',', '.') || '0');
-    const day = Math.min(31, Math.max(1, parseInt(payDay || '1', 10)));
+    const income = parseBRLInput(monthlyIncome);
+    const day = Math.min(31, Math.max(1, parseInt(payDay || '0', 10)));
+    if (!payDay) {
+      toast.error('Selecione o dia em que você recebe');
+      return;
+    }
+    if (income < 0) {
+      toast.error('Informe uma renda válida');
+      return;
+    }
     setSaving(true);
     const { error } = await upsertProfile({ monthly_income: income, pay_day: day });
     setSaving(false);
@@ -103,210 +134,300 @@ export const Settings = () => {
 
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-
-  const selectClass = cn(
-    "w-full h-12 px-4 text-base bg-background text-foreground border border-border rounded-xl",
-    "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
-    "transition-colors hover:border-foreground/30 cursor-pointer"
-  );
-
-  const inputClass = "h-12 px-4 text-base rounded-xl";
+  const [currency, setCurrency] = useState('BRL');
+  const selectedCurrency = CURRENCIES.find((c) => c.value === currency) ?? CURRENCIES[0];
 
   return (
-    <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="w-full space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
         <h2 className="text-2xl font-bold">Configurações</h2>
-        <p className="text-foreground/80 mt-1">Ajustes do site e preferências.</p>
+        <p className="text-muted-foreground mt-1">Ajustes do site e preferências.</p>
       </div>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            <User size={20} />
+      {/* Atalhos rápidos — 3 colunas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+        <Card className="flex h-full flex-col space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <User size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold">Perfil</h3>
+              <p className="text-sm text-muted-foreground">Nome, foto e dados pessoais.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Perfil</h3>
-            <p className="text-sm text-foreground/80">
-              Edite seu nome, foto e dados pessoais.
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/profile')}>
-          <User size={18} />
-          Editar Meu Perfil
-          <ArrowRight size={16} />
-        </Button>
-      </Card>
+          <Button variant="outline" className="mt-auto w-full gap-2" onClick={() => navigate('/profile')}>
+            <User size={18} />
+            Editar Meu Perfil
+            <ArrowRight size={16} className="ml-auto" />
+          </Button>
+        </Card>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            <Palette size={20} />
+        <Card className="flex h-full flex-col space-y-5" data-tour="fluxia-settings-theme">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <Palette size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold">Aparência</h3>
+              <p className="text-sm text-muted-foreground">Tema claro ou escuro.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Aparência</h3>
-            <p className="text-sm text-foreground/80">
-              Alterne entre tema claro e escuro.
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={toggleTheme}>
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-        </Button>
-      </Card>
+          <Button variant="outline" className="mt-auto w-full gap-2" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+          </Button>
+        </Card>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            <Wallet size={20} />
+        <Card className="flex h-full flex-col space-y-5 md:col-span-2 xl:col-span-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <Wallet size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold">Contas e carteiras</h3>
+              <p className="text-sm text-muted-foreground">Bancos e carteiras dos lançamentos.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Contas e carteiras</h3>
-            <p className="text-sm text-foreground/80">
-              Cadastre bancos e carteiras para vincular aos lançamentos (sem sync automático).
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => navigate('/reports')}>
-          <Wallet size={18} />
-          Gerenciar contas
-          <ArrowRight size={16} />
-        </Button>
-      </Card>
+          <Button variant="outline" className="mt-auto w-full gap-2" onClick={() => navigate('/reports')}>
+            <Wallet size={18} />
+            Gerenciar contas
+            <ArrowRight size={16} className="ml-auto" />
+          </Button>
+        </Card>
+      </div>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <Banknote size={20} />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold">Situação financeira</h3>
-            <p className="text-sm text-foreground/80">
-              Informe sua renda e o dia que recebe para o cálculo do fluxo de caixa.
-            </p>
-          </div>
+      {/* Situação financeira — 2 cards alinhados ao resto */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          <Card className="flex h-full flex-col space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Banknote size={20} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold">Renda mensal</h3>
+                <p className="text-sm text-muted-foreground">Base do fluxo de caixa.</p>
+              </div>
+            </div>
+            <div className="mt-auto flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <label className="text-sm font-medium text-foreground shrink-0" htmlFor="settings-income">
+                Valor
+              </label>
+              <div className="relative w-full sm:max-w-[220px]">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                  R$
+                </span>
+                <input
+                  id="settings-income"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={monthlyIncome}
+                  onChange={(e) => setMonthlyIncome(maskBRLInput(e.target.value))}
+                  className="flex h-11 w-full rounded-xl border border-border bg-background pl-11 pr-3 text-base tabular-nums outline-none transition-all placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/30"
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="flex h-full flex-col space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <CalendarDays size={20} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold">Dia do pagamento</h3>
+                <p className="text-sm text-muted-foreground">Quando a renda entra.</p>
+              </div>
+            </div>
+            <div className="mt-auto flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-medium text-foreground shrink-0">Dia do mês</span>
+              <Popover open={payDayOpen} onOpenChange={setPayDayOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex h-11 w-full sm:w-auto sm:min-w-[160px] items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 text-left text-base transition-all',
+                      'hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                      payDayOpen && 'ring-2 ring-primary/30 border-primary/40'
+                    )}
+                  >
+                    {payDay ? (
+                      <span className="font-medium tabular-nums">Dia {payDay}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Selecionar</span>
+                    )}
+                    <CalendarDays size={16} className="shrink-0 text-muted-foreground" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  sideOffset={8}
+                  className="w-[min(100vw-2rem,320px)] rounded-xl border-border p-3 shadow-lg"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">Dia do mês</p>
+                    {payDay && (
+                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
+                        Dia {payDay}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
+                      const selected = Number(payDay) === d;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            setPayDay(String(d));
+                            setPayDayOpen(false);
+                          }}
+                          aria-pressed={selected}
+                          className={cn(
+                            'aspect-square rounded-lg text-sm font-medium tabular-nums transition-colors',
+                            selected
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-foreground hover:bg-muted'
+                          )}
+                        >
+                          {d}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </Card>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 items-end">
-          <div className="space-y-2 flex flex-col items-center sm:items-stretch">
-            <label className="text-sm font-medium text-foreground/90 w-full text-center sm:text-left">Renda mensal</label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder="Ex: 2750"
-              value={monthlyIncome}
-              onChange={(e) => setMonthlyIncome(e.target.value.replace(/[^\d,.]/g, ''))}
-              className={inputClass}
-            />
-          </div>
-          <div className="space-y-2 flex flex-col items-center sm:items-stretch">
-            <label className="text-sm font-medium text-foreground/90 w-full text-center sm:text-left">Dia que recebe</label>
-            <select
-              className={cn(selectClass, "text-center sm:text-left")}
-              value={payDay}
-              onChange={(e) => setPayDay(e.target.value)}
-            >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>
-                  Dia {d}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+
         {hasFinanceChanges && (
-          <div className="flex justify-center pt-2">
+          <div className="flex justify-end">
             <Button onClick={handleSaveFinance} loading={saving}>
               Salvar situação financeira
             </Button>
           </div>
         )}
-      </Card>
+      </div>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            <DollarSign size={20} />
+      {/* Preferências + Segurança */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+        <Card className="flex h-full flex-col space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <DollarSign size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Preferências</h3>
+              <p className="text-sm text-muted-foreground">Moeda padrão dos relatórios.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Preferências</h3>
-            <p className="text-sm text-foreground/80">
-              Defina a moeda padrão para seus relatórios.
-            </p>
+          <div className="mt-auto flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-medium text-foreground shrink-0">Moeda principal</span>
+            <Select
+              value={currency}
+              onValueChange={(value) => {
+                setCurrency(value);
+                if (value !== 'BRL') {
+                  toast.info('Por enquanto a app formata valores em BRL');
+                }
+              }}
+            >
+              <SelectTrigger className="h-11 w-full sm:w-auto sm:min-w-[200px] rounded-xl border-border bg-background px-3 text-sm shadow-none focus-visible:ring-primary/30">
+                <SelectValue>
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary tabular-nums">
+                      {selectedCurrency.symbol}
+                    </span>
+                    <span className="truncate font-medium">{selectedCurrency.value}</span>
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent align="end" className="z-[130] rounded-xl border-border p-1 min-w-[220px]">
+                {CURRENCIES.map((c) => (
+                  <SelectItem
+                    key={c.value}
+                    value={c.value}
+                    className="rounded-lg py-2.5 pl-2 pr-8 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold text-muted-foreground tabular-nums">
+                        {c.symbol}
+                      </span>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="font-medium leading-tight">{c.value}</span>
+                        <span className="text-xs text-muted-foreground leading-tight">{c.label}</span>
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-xl bg-muted/30 border border-border">
-          <span className="font-medium text-foreground text-base">Moeda Principal</span>
-          <select className={cn(selectClass, "sm:min-w-[160px]")}>
-            <option>BRL (R$)</option>
-            <option>USD ($)</option>
-            <option>EUR (€)</option>
-          </select>
-        </div>
-      </Card>
+        </Card>
 
-      <Card className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            <Shield size={20} />
+        <Card className="flex h-full flex-col space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <Shield size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Segurança</h3>
+              <p className="text-sm text-muted-foreground">Senha de acesso da conta.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Segurança</h3>
-            <p className="text-sm text-foreground/80">
-              Altere sua senha de acesso.
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          className="w-full justify-between h-12 px-4"
-          onClick={() => toast.info('Em breve: alteração de senha via e-mail')}
-        >
-          <span>Alterar Senha</span>
-          <ArrowRight size={16} />
-        </Button>
-      </Card>
+          <Button
+            variant="outline"
+            className="mt-auto h-12 w-full justify-between px-4"
+            onClick={() => toast.info('Em breve: alteração de senha via e-mail')}
+          >
+            <span>Alterar Senha</span>
+            <ArrowRight size={16} />
+          </Button>
+        </Card>
+      </div>
 
-      <Card className="space-y-6 border-destructive/30">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive">
-            <RotateCcw size={20} />
+      {/* Zona de risco */}
+      <Card className="border-destructive/30">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="shrink-0 p-2.5 rounded-xl bg-destructive/10 text-destructive">
+              <RotateCcw size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold text-destructive">Restaurar conta</h3>
+              <p className="text-sm text-muted-foreground">
+                Remove transações, orçamentos, contas, contas fixas e perfil. O login permanece.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-destructive">Restaurar conta</h3>
-            <p className="text-sm text-foreground/80">
-              Remove todos os seus dados do site: transações, orçamentos, contas (carteiras), contas fixas e perfil financeiro. A conta de acesso permanece.
-            </p>
-          </div>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="gap-2">
-              <RotateCcw size={18} />
-              Restaurar conta (apagar dados)
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Restaurar conta?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente: transações, orçamentos, contas cadastradas, contas fixas e perfil financeiro. Sua conta de login continuará existindo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
-              <Button
-                variant="destructive"
-                onClick={handleRestoreAccount}
-                disabled={resetting}
-              >
-                {resetting ? 'Restaurando...' : 'Sim, apagar todos os dados'}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="shrink-0 gap-2">
+                <RotateCcw size={18} />
+                Restaurar conta
               </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Restaurar conta?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente: transações, orçamentos, contas cadastradas, contas fixas e perfil financeiro. Sua conta de login continuará existindo.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
+                <Button variant="destructive" onClick={handleRestoreAccount} disabled={resetting}>
+                  {resetting ? 'Restaurando...' : 'Sim, apagar todos os dados'}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </Card>
-
     </div>
   );
 };

@@ -50,8 +50,18 @@ export function useFixedExpenses(userId: string | undefined) {
   };
 
   const deleteExpense = async (id: string) => {
+    if (!userId) return { error: new Error('Não autenticado') };
+    let snapshot: FixedExpense[] = [];
+    setExpenses((prev) => {
+      snapshot = prev;
+      return prev.filter((e) => e.id !== id);
+    });
     const { error } = await supabase.from('fixed_expenses').delete().eq('id', id).eq('user_id', userId);
-    return { error: error ? new Error(error.message) : null };
+    if (error) {
+      setExpenses(snapshot);
+      return { error: new Error(error.message) };
+    }
+    return { error: null };
   };
 
   return { expenses, loading, addExpense, updateExpense, deleteExpense };

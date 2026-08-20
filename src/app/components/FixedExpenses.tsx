@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import { Plus, X, Calendar, FileText } from 'lucide-react';
-import { Card, Button, Input, cn } from './ui';
+import { Plus, X, Calendar, FileText, Trash2 } from 'lucide-react';
+import { Card, Button, Input } from './ui';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { EmptyState, InlineHint } from './patterns';
 import { emptyStates } from '@/content/microcopy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixedExpenses } from '@/hooks/useFixedExpenses';
-import { CATEGORIES } from '@/types/database';
+import { CATEGORIES, type FixedExpense } from '@/types/database';
 import { toast } from 'sonner';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
@@ -18,6 +27,8 @@ export const FixedExpenses = () => {
   const [dueDay, setDueDay] = useState('10');
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<FixedExpense | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const activeExpenses = expenses.filter((e) => e.is_active);
   const totalMonthly = activeExpenses.reduce((s, e) => s + e.amount, 0);
@@ -57,11 +68,15 @@ export const FixedExpenses = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Remover esta obrigação?')) return;
-    const { error } = await deleteExpense(id);
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleting(true);
+    const { error } = await deleteExpense(target.id);
+    setDeleting(false);
+    setDeleteTarget(null);
     if (error) toast.error(error.message);
-    else toast.success('Removido');
+    else toast.success(`“${target.title}” removida`);
   };
 
   const sortedByDueDay = [...activeExpenses].sort((a, b) => a.due_day - b.due_day);
@@ -168,7 +183,8 @@ export const FixedExpenses = () => {
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(exp.id)}
+                      aria-label={`Remover ${exp.title}`}
+                      onClick={() => setDeleteTarget(exp)}
                     >
                       <X size={18} />
                     </Button>
@@ -189,6 +205,47 @@ export const FixedExpenses = () => {
       {activeExpenses.length > 0 && (
         <InlineHint>{emptyStates.fixedExpenses.hint}</InlineHint>
       )}
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="border-border bg-card sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="mx-auto sm:mx-0 mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 size={22} />
+            </div>
+            <AlertDialogTitle>Remover obrigação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A conta fixa sai da lista e deixa de entrar no total mensal.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteTarget && (
+            <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
+              <p className="font-medium text-foreground">{deleteTarget.title}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Vence dia {deleteTarget.due_day} • {deleteTarget.category}
+              </p>
+              <p className="mt-2 text-base font-semibold text-destructive">
+                {formatCurrencyBRL(deleteTarget.amount)}
+              </p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              loading={deleting}
+              disabled={deleting}
+            >
+              Remover
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

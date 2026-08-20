@@ -18,6 +18,8 @@ import {
   Scale,
   Filter,
   RefreshCw,
+  Plus,
+  Layers,
 } from 'lucide-react';
 import { Card, Button, cn } from './ui';
 import { EmptyState } from './patterns';
@@ -37,9 +39,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { TransactionDrawer } from './TransactionDrawer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
 import { getCategoryIcon } from '@/lib/category-icons';
 import {
   getIncomeTotal,
@@ -48,7 +66,6 @@ import {
   filterTransactionsThroughMonthEnd,
 } from '@/lib/transaction-utils';
 import { getEffectiveCashBalance } from '@/features/finance/domain/balance-engine';
-import { CATEGORIES } from '@/types/database';
 import type { Transaction, TransactionSavePayload } from '@/types/database';
 import { uploadTransactionAttachment } from '@/lib/transaction-attachment';
 import { toast } from 'sonner';
@@ -81,6 +98,7 @@ interface TransactionsProps {
 export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: TransactionsProps) => {
   const { user } = useAuth();
   const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions();
+  const { categories, addCategory } = useCategories(user?.id);
   const now = new Date();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -90,6 +108,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   const filtered = useMemo(() => {
     let list = transactions;
@@ -254,6 +275,20 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
     window.location.reload();
   };
 
+  const handleCreateCategory = () => {
+    setCreatingCategory(true);
+    const result = addCategory(newCategoryName);
+    setCreatingCategory(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setFilterCategory(result.name);
+    setCreateCategoryOpen(false);
+    setNewCategoryName('');
+    toast.success(`Categoria "${result.name}" criada`);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Cabeçalho estilo Mobills */}
@@ -299,7 +334,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
             <DropdownMenuContent align="end" className="min-w-[12rem]">
               <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Categoria</div>
               <DropdownMenuItem onClick={() => setFilterCategory('all')}>Todas categorias</DropdownMenuItem>
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <DropdownMenuItem key={c} onClick={() => setFilterCategory(c)}>
                   {c}
                 </DropdownMenuItem>
@@ -415,8 +450,8 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
       </div>
 
       {/* Busca + filtros da tabela */}
-      <Card className="p-4 space-y-4 rounded-2xl">
-        <div className="relative w-full">
+      <Card className="p-4 space-y-4 rounded-2xl" data-tour="fluxia-tx-filters">
+        <div className="relative w-full" data-tour="fluxia-tx-search">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             size={18}
@@ -430,18 +465,67 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="h-9 px-3 rounded-xl border border-border bg-background text-sm"
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="h-9 w-full sm:w-auto sm:min-w-[220px] rounded-xl border-border bg-background px-3 text-sm shadow-none focus-visible:ring-primary/30">
+              <SelectValue>
+                {filterCategory === 'all' ? (
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                      <Layers size={13} />
+                    </span>
+                    <span className="truncate font-medium">Todas categorias</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      {(() => {
+                        const Icon = getCategoryIcon(filterCategory);
+                        return <Icon size={13} />;
+                      })()}
+                    </span>
+                    <span className="truncate font-medium">{filterCategory}</span>
+                  </span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="z-[130] rounded-xl border-border p-1 min-w-[220px]">
+              <SelectItem value="all" className="rounded-lg py-2.5 pl-2 pr-8 cursor-pointer">
+                <span className="flex items-center gap-2.5">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Layers size={13} />
+                  </span>
+                  <span className="font-medium">Todas categorias</span>
+                </span>
+              </SelectItem>
+              {categories.map((c) => {
+                const Icon = getCategoryIcon(c);
+                return (
+                  <SelectItem key={c} value={c} className="rounded-lg py-2.5 pl-2 pr-8 cursor-pointer">
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <Icon size={13} />
+                      </span>
+                      <span className="font-medium">{c}</span>
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-xl"
+            onClick={() => {
+              setNewCategoryName('');
+              setCreateCategoryOpen(true);
+            }}
           >
-            <option value="all">Todas categorias</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            <Plus size={15} />
+            Criar categoria
+          </Button>
+
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
               {labels.limparFiltros}
@@ -623,6 +707,45 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={createCategoryOpen} onOpenChange={setCreateCategoryOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border-border">
+          <DialogHeader>
+            <DialogTitle>Nova categoria</DialogTitle>
+            <DialogDescription>
+              Crie uma categoria para organizar seus lançamentos. Ela aparece no filtro e no formulário de transação.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-1">
+            <label className="text-sm font-medium" htmlFor="new-category-name">
+              Nome
+            </label>
+            <input
+              id="new-category-name"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleCreateCategory();
+                }
+              }}
+              placeholder="Ex.: Pets, Viagem, Impostos"
+              maxLength={40}
+              autoFocus
+              className="flex h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setCreateCategoryOpen(false)} disabled={creatingCategory}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateCategory} loading={creatingCategory} disabled={!newCategoryName.trim()}>
+              Criar categoria
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

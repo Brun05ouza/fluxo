@@ -24,7 +24,7 @@ interface TourContextValue {
 const TourContext = createContext<TourContextValue | null>(null);
 
 const RETRY_MS = 100;
-const RETRY_MAX = 30;
+const RETRY_MAX = 50;
 
 export function useTour() {
   const ctx = useContext(TourContext);
@@ -74,6 +74,19 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       if (step.route && location.pathname !== step.route) {
         navigate(step.route);
       }
+
+      if (
+        step.selector === 'fluxia-tx-mindful' ||
+        step.selector === 'fluxia-tx-recorrente' ||
+        step.selector === 'fluxia-tx-tags' ||
+        step.selector === 'fluxia-tx-observacao'
+      ) {
+        window.dispatchEvent(new CustomEvent('fluxia-tour-expand-tx-details'));
+      }
+      if (step.selector === 'fluxia-budgets-form') {
+        window.dispatchEvent(new CustomEvent('fluxia-tour-open-budget-form'));
+      }
+
       const el = await waitForElement(step.selector);
       if (el) {
         targetRef.current = el;
@@ -109,8 +122,14 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (!pb || pb.steps.length === 0) return;
     setPlaybook(pb);
     setCurrentStepIndex(0);
-    if (playbookId === 'NOVA_TRANSACAO') {
+    window.dispatchEvent(new CustomEvent('fluxia-tour-expand-sidebar'));
+
+    const resolvedId = pb.id;
+    if (resolvedId === 'NOVA_TRANSACAO' || playbookId === 'NOVA_TRANSACAO') {
       window.dispatchEvent(new CustomEvent('fluxia-tour-open-drawer', { detail: { drawer: 'transaction' } }));
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('fluxia-tour-expand-tx-details'));
+      }, 350);
     }
   }, []);
 
@@ -170,6 +189,114 @@ interface TourOverlayProps {
 }
 
 const SPOTLIGHT_PADDING = 24;
+const VIEWPORT_MARGIN = 16;
+
+type TooltipPos = { left: number; top: number; maxHeight: number; placement: TourStep['placement'] };
+
+function clampTooltipPosition(
+  targetBox: DOMRect | null,
+  preferred: TourStep['placement'],
+  tooltipW: number,
+  tooltipH: number,
+): TooltipPos {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const margin = VIEWPORT_MARGIN;
+  const maxHeight = Math.max(160, vh - margin * 2);
+  const cardH = Math.min(tooltipH, maxHeight);
+  const cardW = Math.min(tooltipW, vw - margin * 2);
+  const pad = 16;
+
+  if (!targetBox) {
+    return {
+      left: Math.max(margin, (vw - cardW) / 2),
+      top: Math.max(margin, (vh - cardH) / 2),
+      maxHeight,
+      placement: preferred ?? 'bottom',
+    };
+  }
+
+  const centerX = targetBox.left + targetBox.width / 2;
+  const centerY = targetBox.top + targetBox.height / 2;
+
+  const space = {
+    top: targetBox.top - margin,
+    bottom: vh - targetBox.bottom - margin,
+    left: targetBox.left - margin,
+    right: vw - targetBox.right - margin,
+  };
+
+  const order: NonNullable<TourStep['placement']>[] = [];
+  const preferredSide = preferred ?? 'bottom';
+  order.push(preferredSide);
+  const flips: Record<string, NonNullable<TourStep['placement']>> = {
+    top: 'bottom',
+    bottom: 'top',
+    left: 'right',
+    right: 'left',
+  };
+  order.push(flips[preferredSide]);
+  (['bottom', 'top', 'right', 'left'] as const).forEach((s) => {
+    if (!order.includes(s)) order.push(s);
+  });
+
+  let placement = preferredSide;
+  for (const side of order) {
+    const needed = cardH + pad;
+    const neededW = cardW + pad;
+    if (side === 'top' && space.top >= needed) {
+      placement = side;
+      break;
+    }
+    if (side === 'bottom' && space.bottom >= needed) {
+      placement = side;
+      break;
+    }
+    if (side === 'left' && space.left >= neededW) {
+      placement = side;
+      break;
+    }
+    if (side === 'right' && space.right >= neededW) {
+      placement = side;
+      break;
+    }
+  }
+
+  // Se nenhum lado cabe de verdade, escolhe o que tiver mais espaço vertical/horizontal
+  if (
+    (placement === 'top' && space.top < cardH + pad) ||
+    (placement === 'bottom' && space.bottom < cardH + pad) ||
+    (placement === 'left' && space.left < cardW + pad) ||
+    (placement === 'right' && space.right < cardW + pad)
+  ) {
+    const ranked = (['bottom', 'top', 'right', 'left'] as const).sort(
+      (a, b) => space[b] - space[a],
+    );
+    placement = ranked[0];
+  }
+
+  let left: number;
+  let top: number;
+
+  if (placement === 'right') {
+    left = targetBox.right + pad;
+    top = centerY - cardH / 2;
+  } else if (placement === 'left') {
+    left = targetBox.left - cardW - pad;
+    top = centerY - cardH / 2;
+  } else if (placement === 'top') {
+    left = centerX - cardW / 2;
+    top = targetBox.top - cardH - pad;
+  } else {
+    left = centerX - cardW / 2;
+    top = targetBox.bottom + pad;
+  }
+
+  left = Math.max(margin, Math.min(left, vw - cardW - margin));
+  top = Math.max(margin, Math.min(top, vh - cardH - margin));
+
+  return { left, top, maxHeight, placement };
+}
 
 function TourOverlay({
   step,
@@ -181,7 +308,9 @@ function TourOverlay({
   targetRef,
 }: TourOverlayProps) {
   const [targetBox, setTargetBox] = React.useState<DOMRect | null>(null);
+  const [tooltipSize, setTooltipSize] = React.useState({ w: 380, h: 220 });
   const overlayRef = React.useRef<HTMLDivElement>(null);
+  const tooltipRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const updateBox = () => {
@@ -199,55 +328,45 @@ function TourOverlay({
     if (el) ro.observe(el);
 
     const interval = setInterval(updateBox, 100);
+    const onWin = () => updateBox();
+    window.addEventListener('resize', onWin);
+    window.addEventListener('scroll', onWin, true);
     return () => {
       ro.disconnect();
       clearInterval(interval);
+      window.removeEventListener('resize', onWin);
+      window.removeEventListener('scroll', onWin, true);
     };
   }, [step.selector, targetRef]);
 
-  const placement = step.placement ?? 'bottom';
-  const spotlightRect = targetBox
-    ? {
-        x: targetBox.x - SPOTLIGHT_PADDING,
-        y: targetBox.y - SPOTLIGHT_PADDING,
-        w: targetBox.width + SPOTLIGHT_PADDING * 2,
-        h: targetBox.height + SPOTLIGHT_PADDING * 2,
-      }
-    : null;
+  React.useLayoutEffect(() => {
+    const node = tooltipRef.current;
+    if (!node) return;
 
-  const tooltipPos = React.useMemo(() => {
-    if (!targetBox) return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
-    const pad = 16;
-    const tooltipW = 360;
-    const tooltipH = 180;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const measure = () => {
+      const rect = node.getBoundingClientRect();
+      setTooltipSize((prev) => {
+        if (Math.abs(prev.w - rect.width) < 1 && Math.abs(prev.h - rect.height) < 1) {
+          return prev;
+        }
+        return { w: rect.width, h: rect.height };
+      });
+    };
 
-    let left: number;
-    let top: number;
-    const centerX = targetBox.left + targetBox.width / 2;
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [step.id, step.body, step.title, currentIndex]);
 
-    if (placement === 'right') {
-      left = Math.min(targetBox.right + pad, vw - tooltipW - 16);
-      top = targetBox.top + targetBox.height / 2 - tooltipH / 2;
-    } else if (placement === 'left') {
-      left = Math.max(targetBox.left - tooltipW - pad, 16);
-      top = targetBox.top + targetBox.height / 2 - tooltipH / 2;
-    } else if (placement === 'top') {
-      left = centerX - tooltipW / 2;
-      top = Math.max(targetBox.top - tooltipH - pad, 16);
-    } else {
-      left = centerX - tooltipW / 2;
-      top = targetBox.bottom + pad;
-    }
+  const preferredPlacement = step.placement ?? 'bottom';
+  const tooltipPos = React.useMemo(
+    () =>
+      clampTooltipPosition(targetBox, preferredPlacement, tooltipSize.w, tooltipSize.h),
+    [targetBox, preferredPlacement, tooltipSize.w, tooltipSize.h],
+  );
 
-    left = Math.max(16, Math.min(left, vw - tooltipW - 16));
-    top = Math.max(16, Math.min(top, vh - tooltipH - 16));
-
-    return { left: `${left}px`, top: `${top}px`, transform: 'none' };
-  }, [targetBox, placement]);
-
-  const arrowSide = placement;
+  const arrowSide = tooltipPos.placement;
 
   return (
     <div
@@ -257,44 +376,65 @@ function TourOverlay({
       aria-label={`Guia: ${step.title}`}
     >
       {/* Quadro em 4 painéis — deixa buraco real no centro, campo sempre visível */}
-      {spotlightRect ? (
+      {targetBox ? (
         <>
-          <div
-            className="absolute top-0 left-0 right-0 backdrop-blur-md bg-black/60 pointer-events-none"
-            style={{ height: Math.max(0, spotlightRect.y) }}
-          />
-          <div
-            className="absolute left-0 backdrop-blur-md bg-black/60 pointer-events-none"
-            style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
-          />
-          <div
-            className="absolute backdrop-blur-md bg-black/60 pointer-events-none"
-            style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
-          />
-          <div
-            className="absolute left-0 right-0 bottom-0 backdrop-blur-md bg-black/60 pointer-events-none"
-            style={{ top: spotlightRect.y + spotlightRect.h }}
-          />
-          <div
-            className="absolute top-0 left-0 right-0 bg-black/70 pointer-events-auto"
-            style={{ height: Math.max(0, spotlightRect.y) }}
-            onClick={onExit}
-          />
-          <div
-            className="absolute left-0 bg-black/70 pointer-events-auto"
-            style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
-            onClick={onExit}
-          />
-          <div
-            className="absolute bg-black/70 pointer-events-auto"
-            style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
-            onClick={onExit}
-          />
-          <div
-            className="absolute left-0 right-0 bottom-0 bg-black/70 pointer-events-auto"
-            style={{ top: spotlightRect.y + spotlightRect.h }}
-            onClick={onExit}
-          />
+          {(() => {
+            const spotlightRect = {
+              x: targetBox.x - SPOTLIGHT_PADDING,
+              y: targetBox.y - SPOTLIGHT_PADDING,
+              w: targetBox.width + SPOTLIGHT_PADDING * 2,
+              h: targetBox.height + SPOTLIGHT_PADDING * 2,
+            };
+            return (
+              <>
+                <div
+                  className="absolute top-0 left-0 right-0 backdrop-blur-md bg-black/60 pointer-events-none"
+                  style={{ height: Math.max(0, spotlightRect.y) }}
+                />
+                <div
+                  className="absolute left-0 backdrop-blur-md bg-black/60 pointer-events-none"
+                  style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
+                />
+                <div
+                  className="absolute backdrop-blur-md bg-black/60 pointer-events-none"
+                  style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
+                />
+                <div
+                  className="absolute left-0 right-0 bottom-0 backdrop-blur-md bg-black/60 pointer-events-none"
+                  style={{ top: spotlightRect.y + spotlightRect.h }}
+                />
+                <div
+                  className="absolute top-0 left-0 right-0 bg-black/70 pointer-events-auto"
+                  style={{ height: Math.max(0, spotlightRect.y) }}
+                  onClick={onExit}
+                />
+                <div
+                  className="absolute left-0 bg-black/70 pointer-events-auto"
+                  style={{ top: spotlightRect.y, width: Math.max(0, spotlightRect.x), height: spotlightRect.h }}
+                  onClick={onExit}
+                />
+                <div
+                  className="absolute bg-black/70 pointer-events-auto"
+                  style={{ top: spotlightRect.y, left: spotlightRect.x + spotlightRect.w, right: 0, height: spotlightRect.h }}
+                  onClick={onExit}
+                />
+                <div
+                  className="absolute left-0 right-0 bottom-0 bg-black/70 pointer-events-auto"
+                  style={{ top: spotlightRect.y + spotlightRect.h }}
+                  onClick={onExit}
+                />
+                <div
+                  className="absolute pointer-events-none ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-xl"
+                  style={{
+                    left: spotlightRect.x,
+                    top: spotlightRect.y,
+                    width: spotlightRect.w,
+                    height: spotlightRect.h,
+                  }}
+                />
+              </>
+            );
+          })()}
         </>
       ) : (
         <div
@@ -303,24 +443,19 @@ function TourOverlay({
         />
       )}
 
-      {spotlightRect && (
-        <div
-          className="absolute pointer-events-none ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-xl"
-          style={{
-            left: spotlightRect.x,
-            top: spotlightRect.y,
-            width: spotlightRect.w,
-            height: spotlightRect.h,
-          }}
-        />
-      )}
-
       <div
         className="absolute pointer-events-auto z-10"
-        style={tooltipPos}
+        style={{
+          left: tooltipPos.left,
+          top: tooltipPos.top,
+          maxWidth: `min(90vw, 380px)`,
+          maxHeight: tooltipPos.maxHeight,
+        }}
       >
-        <div className="w-[min(90vw,380px)] rounded-xl border-2 border-primary/30 bg-card shadow-2xl p-5 relative isolate backdrop-blur-none">
-          {/* Seta direcional apontando para o elemento alvo */}
+        <div
+          ref={tooltipRef}
+          className="w-[min(90vw,380px)] max-h-[inherit] overflow-y-auto rounded-xl border-2 border-primary/30 bg-card shadow-2xl p-5 relative isolate backdrop-blur-none"
+        >
           {arrowSide === 'right' && targetBox && (
             <div
               className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent border-r-[12px] border-r-card"
@@ -350,14 +485,22 @@ function TourOverlay({
             />
           )}
 
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <h3 className="font-bold text-lg text-foreground">{step.title}</h3>
-            <span className="text-sm font-medium text-primary shrink-0 bg-primary/10 px-2 py-0.5 rounded">
-              {currentIndex}/{total}
-            </span>
+          <div className="flex items-start gap-3 mb-3">
+            <img
+              src="/flux.ia.png?v=2"
+              alt=""
+              className="w-12 h-12 object-contain shrink-0 -mt-0.5"
+              aria-hidden
+            />
+            <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
+              <h3 className="font-bold text-lg text-foreground leading-snug">{step.title}</h3>
+              <span className="text-sm font-medium text-primary shrink-0 bg-primary/10 px-2 py-0.5 rounded">
+                {currentIndex}/{total}
+              </span>
+            </div>
           </div>
-          <p className="text-base text-muted-foreground mb-5 leading-relaxed">{step.body}</p>
-          <div className="flex items-center justify-between gap-3">
+          <p className="text-base text-muted-foreground mb-5 leading-relaxed pl-0 sm:pl-[3.75rem]">{step.body}</p>
+          <div className="flex items-center justify-between gap-3 sm:pl-[3.75rem]">
             <div className="flex gap-2">
               <button
                 type="button"

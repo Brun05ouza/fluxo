@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Target,
@@ -12,8 +12,24 @@ import {
   X,
   Pencil,
   Check,
+  Trash2,
 } from 'lucide-react';
 import { Card, Button, ProgressBar, Input, cn } from '@/app/components/ui';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -32,7 +48,7 @@ import { useForecast } from '@/hooks/useForecast';
 import { getSpentByCategory, getBudgetProgress } from '@/lib/transaction-utils';
 import { CATEGORIES } from '@/types/database';
 import { toast } from 'sonner';
-import { formatCurrencyBRL } from '@/lib/format-currency';
+import { formatCurrencyBRL, maskBRLInput, parseBRLInput } from '@/lib/format-currency';
 
 const BUDGET_ICONS: Record<string, React.ElementType> = {
   Alimentação: Utensils,
@@ -42,6 +58,13 @@ const BUDGET_ICONS: Record<string, React.ElementType> = {
   Lazer: Play,
   Saúde: HeartPulse,
   Educação: GraduationCap,
+};
+
+type DeleteTarget = {
+  id: string;
+  category: string;
+  limit: number;
+  spent: number;
 };
 
 export const Budgets = () => {
@@ -55,11 +78,25 @@ export const Budgets = () => {
   const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
   const [newLimit, setNewLimit] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editLimit, setEditLimit] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  const openAddModal = () => {
+    setNewCategory(CATEGORIES.find((c) => !budgets.some((b) => b.category === c)) ?? CATEGORIES[0]);
+    setNewLimit('');
+    setShowAdd(true);
+  };
+
+  React.useEffect(() => {
+    const openForm = () => openAddModal();
+    window.addEventListener('fluxia-tour-open-budget-form', openForm);
+    return () => window.removeEventListener('fluxia-tour-open-budget-form', openForm);
+  }, [budgets]);
+
+  const allCategoriesBudgeted = CATEGORIES.every((c) => budgets.some((b) => b.category === c));
 
   const spentByCategory = getSpentByCategory(transactions);
   const budgetProgress = getBudgetProgress(budgets, spentByCategory);
@@ -67,8 +104,14 @@ export const Budgets = () => {
   const totalSpent = Object.values(spentByCategory).reduce((a, b) => a + b, 0);
   const restanteMes = Math.max(0, totalBudgeted - totalSpent);
 
+  const resetAddForm = () => {
+    setShowAdd(false);
+    setNewCategory(CATEGORIES.find((c) => !budgets.some((b) => b.category === c)) ?? CATEGORIES[0]);
+    setNewLimit('');
+  };
+
   const handleAddBudget = async () => {
-    const limit = parseFloat(newLimit?.replace(',', '.') || '0');
+    const limit = parseBRLInput(newLimit);
     if (limit <= 0) {
       toast.error('Informe um limite válido');
       return;
@@ -84,30 +127,31 @@ export const Budgets = () => {
     if (error) toast.error(error.message);
     else {
       toast.success('Orçamento criado!');
-      setShowAdd(false);
-      setNewCategory(CATEGORIES[0]);
-      setNewLimit('');
+      resetAddForm();
     }
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteId) return;
+    if (!deleteTarget) return;
+    const target = deleteTarget;
     setDeleting(true);
-    const { error } = await deleteBudget(deleteId);
+    const { error } = await deleteBudget(target.id);
     setDeleting(false);
-    setDeleteId(null);
+    setDeleteTarget(null);
     if (error) toast.error(error.message);
-    else toast.success('Orçamento removido');
+    else toast.success(`Orçamento de “${target.category}” removido`);
   };
 
   const handleEditStart = (id: string, currentLimit: number) => {
     setEditId(id);
-    setEditLimit(currentLimit.toFixed(2).replace('.', ','));
+    setEditLimit(
+      currentLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    );
   };
 
   const handleEditSave = async () => {
     if (!editId) return;
-    const limit = parseFloat(editLimit.replace(',', '.') || '0');
+    const limit = parseBRLInput(editLimit);
     if (limit <= 0) {
       toast.error('Informe um limite válido');
       return;
@@ -140,49 +184,133 @@ export const Budgets = () => {
             Mantenha seus gastos sob controle por categoria.
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={showAdd}>
+        <Button
+          className="gap-2"
+          onClick={openAddModal}
+          disabled={allCategoriesBudgeted}
+          title={
+            allCategoriesBudgeted
+              ? 'Todas as categorias já possuem orçamento'
+              : 'Criar novo orçamento'
+          }
+          data-tour="fluxia-budgets-new"
+        >
           <Plus size={20} /> Novo Orçamento
         </Button>
       </div>
 
-      {showAdd && (
-        <Card className="p-6 flex flex-col sm:flex-row gap-4 items-end">
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Dialog
+        open={showAdd}
+        onOpenChange={(open) => {
+          if (!open) resetAddForm();
+          else openAddModal();
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md border-border bg-card"
+          data-tour="fluxia-budgets-form"
+        >
+          <DialogHeader>
+            <DialogTitle>Novo orçamento</DialogTitle>
+            <DialogDescription>
+              Defina um limite mensal por categoria. O Fluxo avisa quando você se aproxima do teto.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-              <select
-                className="w-full h-11 px-3 bg-background border border-border rounded-[var(--radius)]"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                disabled={CATEGORIES.every((c) => budgets.some((b) => b.category === c))}
-              >
-                {CATEGORIES.filter((c) => !budgets.some((b) => b.category === c)).map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-                {CATEGORIES.every((c) => budgets.some((b) => b.category === c)) && (
-                  <option>Todas as categorias já possuem orçamento</option>
-                )}
-              </select>
+              <label className="text-sm font-medium text-muted-foreground" id="budget-category-label">
+                Categoria
+              </label>
+              {allCategoriesBudgeted ? (
+                <div className="flex h-11 items-center rounded-xl border border-border bg-muted/40 px-3 text-sm text-muted-foreground">
+                  Todas as categorias já possuem orçamento
+                </div>
+              ) : (
+                <Select
+                  value={newCategory}
+                  onValueChange={setNewCategory}
+                >
+                  <SelectTrigger
+                    id="budget-category"
+                    aria-labelledby="budget-category-label"
+                    className="h-11 w-full rounded-xl border-border bg-background px-3 text-sm shadow-none focus-visible:ring-primary/30"
+                  >
+                    <SelectValue placeholder="Escolha a categoria">
+                      {(() => {
+                        const Icon = BUDGET_ICONS[newCategory] || Target;
+                        return (
+                          <span className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              <Icon size={15} />
+                            </span>
+                            <span className="truncate font-medium">{newCategory}</span>
+                          </span>
+                        );
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="z-[130] rounded-xl border-border p-1">
+                    {CATEGORIES.filter((c) => !budgets.some((b) => b.category === c)).map((c) => {
+                      const Icon = BUDGET_ICONS[c] || Target;
+                      return (
+                        <SelectItem
+                          key={c}
+                          value={c}
+                          className="rounded-lg py-2.5 pl-2 pr-8 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                              <Icon size={15} />
+                            </span>
+                            <span className="font-medium">{c}</span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-            <Input
-              label="Limite (R$)"
-              placeholder="0,00"
-              value={newLimit}
-              onChange={(e) => setNewLimit(e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground" htmlFor="budget-limit">
+                Limite mensal
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                  R$
+                </span>
+                <input
+                  id="budget-limit"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={newLimit}
+                  onChange={(e) => setNewLimit(maskBRLInput(e.target.value))}
+                  autoFocus
+                  className="flex h-11 w-full rounded-xl border border-border bg-background pl-11 pr-3 py-2 text-sm tabular-nums outline-none transition-all placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/30"
+                />
+              </div>
+              {newLimit && parseBRLInput(newLimit) <= 0 && (
+                <p className="text-xs text-destructive">Informe um valor maior que zero.</p>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowAdd(false)}>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={resetAddForm} disabled={saving}>
               Cancelar
             </Button>
-            <Button onClick={handleAddBudget} loading={saving} disabled={!newLimit}>
+            <Button
+              onClick={handleAddBudget}
+              loading={saving}
+              disabled={!newLimit || parseBRLInput(newLimit) <= 0 || allCategoriesBudgeted}
+            >
               Salvar
             </Button>
-          </div>
-        </Card>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-primary/5 border-primary/20 space-y-2">
@@ -223,10 +351,10 @@ export const Budgets = () => {
                         <span className="text-sm text-muted-foreground">R$</span>
                         <input
                           type="text"
-                          inputMode="decimal"
-                          className="w-28 h-7 px-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          inputMode="numeric"
+                          className="w-28 h-7 px-2 text-sm border border-border rounded-md bg-background tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
                           value={editLimit}
-                          onChange={(e) => setEditLimit(e.target.value.replace(/[^\d,.]/g, ''))}
+                          onChange={(e) => setEditLimit(maskBRLInput(e.target.value))}
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleEditSave();
@@ -260,7 +388,15 @@ export const Budgets = () => {
                     variant="ghost"
                     size="icon"
                     className="text-destructive hover:bg-destructive/10"
-                    onClick={() => setDeleteId(budget.id)}
+                    aria-label={`Remover orçamento de ${budget.category}`}
+                    onClick={() =>
+                      setDeleteTarget({
+                        id: budget.id,
+                        category: budget.category,
+                        limit: budget.limit,
+                        spent: budget.spent,
+                      })
+                    }
                   >
                     <X size={18} />
                   </Button>
@@ -330,14 +466,33 @@ export const Budgets = () => {
         )}
       </div>
 
-      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent className="border-border bg-card">
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="border-border bg-card sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover orçamento</AlertDialogTitle>
+            <div className="mx-auto sm:mx-0 mb-1 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 size={22} />
+            </div>
+            <AlertDialogTitle>Remover orçamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? Esta ação não pode ser desfeita.
+              Esta ação não pode ser desfeita. O limite desta categoria deixa de aparecer no acompanhamento.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteTarget && (
+            <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-left">
+              <p className="font-medium text-foreground">{deleteTarget.category}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Usado {formatCurrencyBRL(deleteTarget.spent)} de {formatCurrencyBRL(deleteTarget.limit)}
+              </p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Limite: {formatCurrencyBRL(deleteTarget.limit)}
+              </p>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <Button variant="destructive" onClick={handleDeleteConfirm} loading={deleting} disabled={deleting}>

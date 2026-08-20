@@ -134,6 +134,8 @@ export const Dashboard = ({
     return transactions.filter((t) => t.date.startsWith(prefix));
   }, [transactions, selectedYear, selectedMonth]);
 
+  const hasMonthData = txForMonth.length > 0;
+
   const forecast = useForecast(currentMonthKey, transactions, budgets);
   const income = getIncomeTotal(txForMonth);
   const expense = getExpenseTotal(txForMonth);
@@ -187,7 +189,6 @@ export const Dashboard = ({
     return { done, total: missions.length, percent: Math.round((done / missions.length) * 100) };
   }, [missions]);
 
-  /** Alinhado a `getMissionsForMonth` (categorização no mês). */
   const withCategoryCount = useMemo(
     () => txForMonth.filter((t) => t.category && t.category !== 'Outros').length,
     [txForMonth]
@@ -321,11 +322,184 @@ export const Dashboard = ({
     },
   ];
 
+  const commitmentCard = (
+    <Card className="p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <h3 className="font-bold text-lg leading-tight">Comprometimento da renda</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Contas fixas ativas frente à renda mensal informada no perfil.
+          </p>
+        </div>
+        {onGoToFixedExpenses && (
+          <Button variant="outline" size="sm" className="shrink-0" onClick={onGoToFixedExpenses}>
+            {labels.gerenciarContasFixas}
+          </Button>
+        )}
+      </div>
+      <p className="text-2xl font-bold tabular-nums mt-1">{formatCurrencyBRL(fixedTotal)}</p>
+      <p className="text-xs text-muted-foreground mt-1">Soma das obrigações recorrentes (ativas)</p>
+      {fixedPercentOfIncome != null && monthlyIncome > 0 ? (
+        <p className="text-sm text-muted-foreground mt-3 leading-snug">
+          {labels.percentualRenda.replace('{percent}', String(fixedPercentOfIncome))} Quanto maior o
+          percentual, menos folga você tem para imprevistos no mês.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground mt-3">
+          Informe sua renda mensal no perfil para ver a proporção de comprometimento.
+        </p>
+      )}
+    </Card>
+  );
+
+  const emotionalCard = (
+    <Card className="p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <h3 className="font-bold text-lg leading-tight">Gastos emocionais</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Quanto das suas saídas foi marcado como compra por impulso ou emoção.
+          </p>
+        </div>
+        {onGoToReports && (
+          <Button variant="outline" size="sm" className="shrink-0" onClick={onGoToReports}>
+            {ctas.verRelatorioComportamento}
+          </Button>
+        )}
+      </div>
+      <p className="text-3xl font-bold tabular-nums mt-2">{emotionalPercent}%</p>
+      <p className="text-sm text-muted-foreground mt-2 leading-snug flex-1">
+        {emotionalInsight(emotionalPercent, hasTypedSpending, totalExpensesVal)}
+      </p>
+    </Card>
+  );
+
+  const scoreCard = (
+    <SectionCard
+      className="h-full"
+      title={labels.scoreDoMes}
+      description="Reflete orçamento, categorização e organização do mês."
+    >
+      <div className="flex flex-col sm:flex-row items-center gap-5">
+        <div data-tour="fluxia-dashboard-score">
+          <ScoreRadial value={score} size={100} strokeWidth={8} />
+        </div>
+        <div className="flex-1 w-full space-y-2" data-tour="fluxia-dashboard-score-suggestions">
+          <InlineHint>{hints.score}</InlineHint>
+          {scoreSuggestions.length > 0 ? (
+            <ul className="space-y-1.5 text-sm text-muted-foreground">
+              {scoreSuggestions.map((s, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Continue registrando e revisando o mês para manter o score estável.
+            </p>
+          )}
+        </div>
+      </div>
+    </SectionCard>
+  );
+
+  const missionsCard =
+    missions.length > 0 ? (
+      <Card className="p-5 h-full flex flex-col">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 className="font-bold text-lg">{labels.missoesDoMes}</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Pequenos passos que organizam sua rotina financeira.
+            </p>
+          </div>
+          <span className="text-sm font-semibold tabular-nums text-muted-foreground shrink-0">
+            {missionProgress.done}/{missionProgress.total} concluídas
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden mb-4">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+            style={{ width: `${missionProgress.percent}%` }}
+            role="progressbar"
+            aria-valuenow={missionProgress.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+        <ul className="space-y-2.5 flex-1">
+          {missions.map((m) => (
+            <li
+              key={m.id}
+              className={cn(
+                'flex items-center gap-3 text-sm rounded-lg px-2 py-1.5 -mx-2',
+                m.done ? 'text-muted-foreground bg-muted/30' : 'text-foreground'
+              )}
+            >
+              {m.done ? (
+                <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
+              ) : (
+                <Circle size={20} className="text-muted-foreground/70 shrink-0" />
+              )}
+              <span className={cn('flex-1', m.done && 'line-through')}>{m.label}</span>
+              {m.id === 'categorizar_transacoes' && m.target != null && m.progress != null && !m.done && (
+                <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                  {Math.min(withCategoryCount, m.target)}/{m.target}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Card>
+    ) : null;
+
+  const shortcutsStrip = (
+    <div className="rounded-xl border border-border/70 bg-card/60 px-3 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 px-1">
+        Atalhos
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        {onGoToImport && (
+          <Button variant="outline" className="h-auto py-2.5 flex flex-col gap-1" onClick={onGoToImport}>
+            <FileSpreadsheet className="size-4 opacity-80" />
+            <span className="text-xs font-medium">Importar</span>
+          </Button>
+        )}
+        {onAddTransaction && (
+          <Button variant="outline" className="h-auto py-2.5 flex flex-col gap-1" onClick={() => onAddTransaction()}>
+            <ListOrdered className="size-4 opacity-80" />
+            <span className="text-xs font-medium">Lançamento</span>
+          </Button>
+        )}
+        {onGoToBudgets && (
+          <Button variant="outline" className="h-auto py-2.5 flex flex-col gap-1" onClick={onGoToBudgets}>
+            <LayoutGrid className="size-4 opacity-80" />
+            <span className="text-xs font-medium">Orçamentos</span>
+          </Button>
+        )}
+        {onGoToReports && (
+          <Button variant="outline" className="h-auto py-2.5 flex flex-col gap-1" onClick={onGoToReports}>
+            <PieChartIcon className="size-4 opacity-80" />
+            <span className="text-xs font-medium">Relatórios</span>
+          </Button>
+        )}
+        {onGoToTransactions && (
+          <Button variant="outline" className="h-auto py-2.5 flex flex-col gap-1" onClick={onGoToTransactions}>
+            <Wallet className="size-4 opacity-80" />
+            <span className="text-xs font-medium">Transações</span>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-10 pb-10"
+      className="space-y-6 pb-10 md:space-y-8"
     >
       {importSuccess && (
         <SuccessBanner
@@ -345,13 +519,14 @@ export const Dashboard = ({
         />
       )}
 
-      {/* Cabeçalho da página + mês */}
-      <header className="space-y-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <header>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{labels.visaoDoMes}</h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-              Entenda em segundos o que entrou, o que saiu e como está seu mês — depois aprofunde nas análises e ações.
+              {hasMonthData
+                ? 'Resumo do mês, hábitos de gasto e próximos passos.'
+                : 'Comece importando o extrato ou lançando a primeira movimentação.'}
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-2 py-1.5 shrink-0">
@@ -378,115 +553,135 @@ export const Dashboard = ({
         </div>
       </header>
 
-      {txForMonth.length === 0 && (
-        <EmptyState
-          icon={<Upload size={28} />}
-          title={emptyStates.dashboard.title}
-          description={emptyStates.dashboard.description}
-          bullets={emptyStates.dashboard.bullets}
-          primaryAction={onGoToImport ? { label: emptyStates.dashboard.primaryCta, onClick: onGoToImport } : undefined}
-          secondaryAction={onAddTransaction ? { label: emptyStates.dashboard.secondaryCta, onClick: onAddTransaction } : undefined}
-          onGuideClick={onGuideClick}
-        />
-      )}
+      {!hasMonthData ? (
+        <>
+          <EmptyState
+            icon={<Upload size={28} />}
+            title={emptyStates.dashboard.title}
+            description={emptyStates.dashboard.description}
+            bullets={emptyStates.dashboard.bullets}
+            primaryAction={onGoToImport ? { label: emptyStates.dashboard.primaryCta, onClick: onGoToImport } : undefined}
+            secondaryAction={onAddTransaction ? { label: emptyStates.dashboard.secondaryCta, onClick: onAddTransaction } : undefined}
+            onGuideClick={onGuideClick}
+          />
 
-      {/* Camada 1 — Indicadores principais */}
-      <section aria-labelledby="dash-resumo" className="space-y-3">
-        <div className="sr-only">
-          <h2 id="dash-resumo">Resumo financeiro do mês</h2>
-        </div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visão geral</p>
-        <KPIGroup items={kpiItems} />
-      </section>
+          <section className="space-y-3" aria-labelledby="dash-contexto">
+            <h2 id="dash-contexto" className="text-lg font-semibold tracking-tight">
+              Enquanto isso
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5 items-stretch">
+              <div className="min-w-0">{commitmentCard}</div>
+              <div className="min-w-0">{scoreCard}</div>
+              {missionsCard && <div className="min-w-0 md:col-span-2 xl:col-span-1">{missionsCard}</div>}
+            </div>
+          </section>
 
-      {/* Camada 2 — Análise e comportamento */}
-      <section className="space-y-4" aria-labelledby="dash-analise">
-        <div className="space-y-1 border-b border-border/60 pb-3">
-          <h2 id="dash-analise" className="text-lg font-semibold tracking-tight">
-            Análise e comportamento
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            Onde o dinheiro foi parar, hábitos de consumo e compromissos fixos — use para ajustar o mês antes que acabe.
-          </p>
-        </div>
+          {shortcutsStrip}
+        </>
+      ) : (
+        <>
+          <section aria-labelledby="dash-resumo" className="space-y-3">
+            <div className="sr-only">
+              <h2 id="dash-resumo">Resumo financeiro do mês</h2>
+            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visão geral</p>
+            <KPIGroup items={kpiItems} />
+          </section>
 
-        {budgetRiskCategories.length > 0 && (
-          <Card className="p-5 border-orange-500/30 bg-orange-500/[0.06]">
-            <h3 className="font-semibold text-orange-700 dark:text-orange-400 mb-1">Orçamento em risco</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Com o ritmo atual de gastos, estas categorias podem estourar o limite antes do fim do mês.
-            </p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {budgetRiskCategories.map((c) => (
-                <li key={c.category}>
-                  <strong className="text-foreground">{c.category}</strong>: estoura em cerca de{' '}
-                  <strong className="text-foreground">{c.daysUntilOverflow}</strong> dia(s). Teto sugerido:{' '}
-                  {formatCurrencyBRL(c.suggestedDailyLimit)}/dia.
-                </li>
-              ))}
-            </ul>
-            {onGoToBudgets && (
-              <Button variant="outline" size="sm" className="mt-4" onClick={onGoToBudgets}>
-                Ajustar orçamentos
-              </Button>
-            )}
-          </Card>
-        )}
+          <section className="space-y-4" aria-labelledby="dash-analise">
+            <div className="space-y-0.5">
+              <h2 id="dash-analise" className="text-lg font-semibold tracking-tight">
+                Análise
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Onde o dinheiro foi e quanto está comprometido.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 lg:items-start">
-          <div className="lg:col-span-2 space-y-4 min-w-0 flex flex-col">
-            <Card className="p-5 space-y-4 w-full">
-              <div>
-                <h3 className="font-bold text-lg">{labels.gastosPorCategoria}</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Distribuição das despesas do mês por categoria (ajuda a ver prioridades).
+            {budgetRiskCategories.length > 0 && (
+              <Card className="p-5 border-orange-500/30 bg-orange-500/[0.06]">
+                <h3 className="font-semibold text-orange-700 dark:text-orange-400 mb-1">Orçamento em risco</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Com o ritmo atual, estas categorias podem estourar o limite antes do fim do mês.
                 </p>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {budgetRiskCategories.map((c) => (
+                    <li key={c.category}>
+                      <strong className="text-foreground">{c.category}</strong>: estoura em cerca de{' '}
+                      <strong className="text-foreground">{c.daysUntilOverflow}</strong> dia(s). Teto sugerido:{' '}
+                      {formatCurrencyBRL(c.suggestedDailyLimit)}/dia.
+                    </li>
+                  ))}
+                </ul>
+                {onGoToBudgets && (
+                  <Button variant="outline" size="sm" className="mt-4" onClick={onGoToBudgets}>
+                    Ajustar orçamentos
+                  </Button>
+                )}
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 items-stretch">
+              <Card className="p-5 space-y-4 w-full h-full lg:col-span-2 min-w-0 flex flex-col">
+                <div>
+                  <h3 className="font-bold text-lg">{labels.gastosPorCategoria}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Distribuição das despesas do mês por categoria.
+                  </p>
+                </div>
+                {dataPie.length > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8 flex-1">
+                    <div className="mx-auto sm:mx-0 size-[200px] shrink-0 sm:size-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={dataPie}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="52%"
+                            outerRadius="82%"
+                            paddingAngle={2}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {dataPie.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ChartTooltip formatter={(v) => formatCurrencyBRL(v)} />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5 min-w-0 w-full sm:flex-1">
+                      {dataPie.map((item) => (
+                        <div key={item.name} className="flex items-center gap-2 text-sm min-w-0">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="truncate text-muted-foreground">{item.name}</span>
+                          <span className="font-medium shrink-0 ml-auto tabular-nums">
+                            {formatCurrencyBRL(item.value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/20 min-h-[120px] px-4 text-muted-foreground text-sm text-center">
+                    Nenhuma despesa categorizada neste mês.
+                  </div>
+                )}
+              </Card>
+
+              <div className="flex flex-col gap-4 lg:gap-5 min-w-0 h-full">
+                <div className="flex-1 min-h-0">{emotionalCard}</div>
+                <div className="flex-1 min-h-0">{commitmentCard}</div>
               </div>
-              {dataPie.length > 0 ? (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
-                  <div className="mx-auto sm:mx-0 size-[200px] shrink-0 sm:size-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={dataPie}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius="52%"
-                          outerRadius="82%"
-                          paddingAngle={2}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {dataPie.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<ChartTooltip formatter={(v) => formatCurrencyBRL(v)} />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5 min-w-0 w-full sm:flex-1">
-                    {dataPie.map((item) => (
-                      <div key={item.name} className="flex items-center gap-2 text-sm min-w-0">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="truncate text-muted-foreground">{item.name}</span>
-                        <span className="font-medium shrink-0 ml-auto tabular-nums">{formatCurrencyBRL(item.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center rounded-lg border border-dashed border-border/80 bg-muted/20 py-10 px-4 text-muted-foreground text-sm text-center">
-                  Nenhuma despesa categorizada neste mês para exibir no gráfico.
-                </div>
-              )}
-            </Card>
+            </div>
 
             <Card className="p-5 w-full">
-              <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <h3 className="font-bold text-lg">{labels.ultimasTransacoes}</h3>
                 {onGoToTransactions && (
                   <Button variant="ghost" size="sm" className="text-primary gap-1 shrink-0" onClick={onGoToTransactions}>
@@ -494,244 +689,91 @@ export const Dashboard = ({
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mb-3 -mt-1">Até 5 lançamentos mais recentes deste mês.</p>
+              <p className="text-xs text-muted-foreground mb-3">Até 5 lançamentos mais recentes deste mês.</p>
               <div className="space-y-0">
-                {latestTx.length > 0 ? (
-                  latestTx.map((tx) => {
-                    const Icon = getCategoryIcon(tx.category);
-                    const isIncome = tx.amount > 0;
-                    return (
-                      <div
-                        key={tx.id}
-                        className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground shrink-0">
-                            <Icon size={16} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate text-sm">
-                              {formatTransactionTitleWithParcel(tx, parcelLabelMap)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(tx.date).toLocaleDateString('pt-BR')} · {tx.category}
-                            </p>
-                          </div>
+                {latestTx.map((tx) => {
+                  const Icon = getCategoryIcon(tx.category);
+                  const isIncome = tx.amount > 0;
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground shrink-0">
+                          <Icon size={16} />
                         </div>
-                        <span
-                          className={cn(
-                            'font-semibold tabular-nums text-sm shrink-0 ml-2',
-                            isIncome ? 'text-emerald-500' : 'text-destructive'
-                          )}
-                        >
-                          {isIncome ? '+' : '-'} {formatCurrencyBRL(Math.abs(tx.amount))}
-                        </span>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate text-sm">
+                            {formatTransactionTitleWithParcel(tx, parcelLabelMap)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(tx.date).toLocaleDateString('pt-BR')} · {tx.category}
+                          </p>
+                        </div>
                       </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma transação neste mês.</p>
-                )}
+                      <span
+                        className={cn(
+                          'font-semibold tabular-nums text-sm shrink-0 ml-2',
+                          isIncome ? 'text-emerald-500' : 'text-destructive'
+                        )}
+                      >
+                        {isIncome ? '+' : '-'} {formatCurrencyBRL(Math.abs(tx.amount))}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
-          </div>
+          </section>
 
-          <div className="space-y-4 flex flex-col min-w-0 w-full">
-            <Card className="p-5 flex flex-col">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <h3 className="font-bold text-lg leading-tight">Gastos emocionais</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Quanto das suas saídas foi marcado como compra por impulso ou emoção.
-                  </p>
-                </div>
-                {onGoToReports && (
-                  <Button variant="outline" size="sm" className="shrink-0" onClick={onGoToReports}>
-                    {ctas.verRelatorioComportamento}
-                  </Button>
-                )}
-              </div>
-              <p className="text-3xl font-bold tabular-nums mt-2">{emotionalPercent}%</p>
-              <p className="text-sm text-muted-foreground mt-2 leading-snug">
-                {emotionalInsight(emotionalPercent, hasTypedSpending, totalExpensesVal)}
+          <section className="space-y-4" aria-labelledby="dash-acoes">
+            <div className="space-y-0.5">
+              <h2 id="dash-acoes" className="text-lg font-semibold tracking-tight">
+                Próximos passos
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Score, missões e a ação com maior impacto agora.
               </p>
-            </Card>
+            </div>
 
-            <Card className="p-5">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <h3 className="font-bold text-lg leading-tight">Comprometimento da renda</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Contas fixas ativas frente à renda mensal informada no perfil.
-                  </p>
-                </div>
-                {onGoToFixedExpenses && (
-                  <Button variant="outline" size="sm" className="shrink-0" onClick={onGoToFixedExpenses}>
-                    {labels.gerenciarContasFixas}
+            {dominantAction && (
+              <SectionCard
+                title={labels.acaoPrincipal}
+                description="Maior impacto para o seu mês com base no que você já cadastrou."
+                action={
+                  <PrimaryCTA onClick={dominantAction.onCta} icon={<ArrowRight size={18} />}>
+                    {dominantAction.ctaLabel}
+                  </PrimaryCTA>
+                }
+              >
+                <p className="text-sm text-foreground/90 leading-relaxed">{dominantAction.title}</p>
+                {dominantAction.secondary && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full sm:w-auto"
+                    onClick={dominantAction.secondary.onClick}
+                  >
+                    {dominantAction.secondary.label}
                   </Button>
                 )}
-              </div>
-              <p className="text-2xl font-bold tabular-nums mt-1">{formatCurrencyBRL(fixedTotal)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Soma das obrigações recorrentes (ativas)</p>
-              {fixedPercentOfIncome != null && monthlyIncome > 0 && (
-                <p className="text-sm text-muted-foreground mt-3 leading-snug">
-                  {labels.percentualRenda.replace('{percent}', String(fixedPercentOfIncome))} Quanto maior o
-                  percentual, menos folga você tem para imprevistos no mês.
-                </p>
+              </SectionCard>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-stretch">
+              <div className="min-w-0">{scoreCard}</div>
+              {missionsCard ? (
+                <div className="min-w-0">{missionsCard}</div>
+              ) : (
+                <div className="min-w-0 hidden lg:block" aria-hidden />
               )}
-              {monthlyIncome <= 0 && (
-                <p className="text-sm text-muted-foreground mt-3">
-                  Informe sua renda mensal no perfil para ver a proporção de comprometimento.
-                </p>
-              )}
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Camada 3 — Ação e evolução */}
-      <section className="space-y-4" aria-labelledby="dash-acoes">
-        <div className="space-y-1 border-b border-border/60 pb-3">
-          <h2 id="dash-acoes" className="text-lg font-semibold tracking-tight">
-            Próximos passos
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            O sistema sugere o que fazer a seguir: complete missões, siga o score e use os atalhos quando precisar.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-          {dominantAction && txForMonth.length > 0 && (
-            <SectionCard
-              title={labels.acaoPrincipal}
-              description="Ação com maior impacto para o seu mês, com base no que você já cadastrou."
-              action={
-                <PrimaryCTA onClick={dominantAction.onCta} icon={<ArrowRight size={18} />}>
-                  {dominantAction.ctaLabel}
-                </PrimaryCTA>
-              }
-            >
-              <p className="text-sm text-foreground/90 leading-relaxed">{dominantAction.title}</p>
-              {dominantAction.secondary && (
-                <Button variant="outline" size="sm" className="mt-2 w-full sm:w-auto" onClick={dominantAction.secondary.onClick}>
-                  {dominantAction.secondary.label}
-                </Button>
-              )}
-            </SectionCard>
-          )}
-
-          <SectionCard
-            title={labels.scoreDoMes}
-            description="Não é só um número: reflete orçamento, categorização e organização. Use as dicas para subir de nível."
-          >
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div data-tour="fluxia-dashboard-score">
-                <ScoreRadial value={score} size={100} strokeWidth={8} />
-              </div>
-              <div className="flex-1 w-full space-y-2" data-tour="fluxia-dashboard-score-suggestions">
-                <InlineHint>{hints.score}</InlineHint>
-                {scoreSuggestions.length > 0 ? (
-                  <ul className="space-y-1.5 text-sm text-muted-foreground">
-                    {scoreSuggestions.map((s, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="text-primary shrink-0">•</span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Continue registrando e revisando o mês para manter o score estável.</p>
-                )}
-              </div>
             </div>
-          </SectionCard>
-        </div>
 
-        {missions.length > 0 && (
-          <Card className="p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <div>
-                <h3 className="font-bold text-lg">{labels.missoesDoMes}</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Progresso do mês: pequenos passos que organizam sua rotina financeira.
-                </p>
-              </div>
-              <span className="text-sm font-semibold tabular-nums text-muted-foreground shrink-0">
-                {missionProgress.done}/{missionProgress.total} concluídas
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden mb-4">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${missionProgress.percent}%` }}
-                role="progressbar"
-                aria-valuenow={missionProgress.percent}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              />
-            </div>
-            <ul className="space-y-2.5">
-              {missions.map((m) => (
-                <li
-                  key={m.id}
-                  className={cn(
-                    'flex items-center gap-3 text-sm rounded-lg px-2 py-1.5 -mx-2',
-                    m.done ? 'text-muted-foreground bg-muted/30' : 'text-foreground'
-                  )}
-                >
-                  {m.done ? (
-                    <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
-                  ) : (
-                    <Circle size={20} className="text-muted-foreground/70 shrink-0" />
-                  )}
-                  <span className={cn('flex-1', m.done && 'line-through')}>{m.label}</span>
-                  {m.id === 'categorizar_transacoes' && m.target != null && m.progress != null && !m.done && (
-                    <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                      {Math.min(withCategoryCount, m.target)}/{m.target}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-
-        <Card className="p-5">
-          <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-3">Atalhos</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {onGoToImport && (
-              <Button variant="outline" className="h-auto py-3 flex flex-col gap-1.5" onClick={onGoToImport}>
-                <FileSpreadsheet className="size-5 opacity-80" />
-                <span className="text-xs font-medium">Importar extrato</span>
-              </Button>
-            )}
-            {onAddTransaction && (
-              <Button variant="outline" className="h-auto py-3 flex flex-col gap-1.5" onClick={() => onAddTransaction()}>
-                <ListOrdered className="size-5 opacity-80" />
-                <span className="text-xs font-medium">Novo lançamento</span>
-              </Button>
-            )}
-            {onGoToBudgets && (
-              <Button variant="outline" className="h-auto py-3 flex flex-col gap-1.5" onClick={onGoToBudgets}>
-                <LayoutGrid className="size-5 opacity-80" />
-                <span className="text-xs font-medium">Orçamentos</span>
-              </Button>
-            )}
-            {onGoToReports && (
-              <Button variant="outline" className="h-auto py-3 flex flex-col gap-1.5" onClick={onGoToReports}>
-                <PieChartIcon className="size-5 opacity-80" />
-                <span className="text-xs font-medium">Relatórios</span>
-              </Button>
-            )}
-            {onGoToTransactions && (
-              <Button variant="outline" className="h-auto py-3 flex flex-col gap-1.5" onClick={onGoToTransactions}>
-                <Wallet className="size-5 opacity-80" />
-                <span className="text-xs font-medium">Transações</span>
-              </Button>
-            )}
-          </div>
-        </Card>
-      </section>
+            {shortcutsStrip}
+          </section>
+        </>
+      )}
     </motion.div>
   );
 };

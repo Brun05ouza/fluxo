@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -62,11 +62,15 @@ const sidebarLabelClass = (collapsed: boolean) =>
 
 /** Mesma grade de todos os itens da sidebar: padding e coluna de ícone fixa. */
 const sidebarRowClass = 'flex items-center w-full rounded-[var(--radius)] px-2 py-2.5 gap-0';
-/** Linha da marca + CTA: altura para ícone 44px + padding. */
+/** Linha da marca + CTA: altura para ícone destacado + padding. */
 const sidebarProminentRowClass = cn(sidebarRowClass, 'min-h-16 justify-center');
-/** Célula de ícone maior só na marca e no Nova transação (nav segue 40px). */
+/** Célula de ícone maior só no Nova transação (nav segue 40px). */
 const sidebarProminentIconCellClass =
   'flex h-11 w-11 shrink-0 items-center justify-center pointer-events-none';
+/** Logo da marca — maior que os ícones de nav/CTA. */
+const sidebarBrandIconCellClass =
+  'flex h-14 w-14 shrink-0 items-center justify-center pointer-events-none';
+const sidebarBrandRowClass = cn(sidebarRowClass, 'min-h-[4.5rem] justify-center');
 const sidebarIconCellClass =
   'flex h-10 w-10 shrink-0 items-center justify-center pointer-events-none';
 
@@ -81,6 +85,12 @@ const sidebarAlignedLabelClass = (
     sidebarLabelClass(collapsed),
     'inline-flex h-11 items-center text-base leading-none',
     weight === 'semibold' ? 'font-semibold' : 'font-bold'
+  );
+
+const sidebarBrandLabelClass = (collapsed: boolean) =>
+  cn(
+    sidebarLabelClass(collapsed),
+    'inline-flex h-14 items-center text-xl leading-none font-bold'
   );
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed, dataTour }: SidebarItemProps) => (
@@ -157,6 +167,16 @@ export const AppLayout = ({
       return next;
     });
   }, [cancelTimer]);
+
+  useEffect(() => {
+    const expand = () => {
+      cancelTimer();
+      setCollapsed(false);
+    };
+    window.addEventListener('fluxia-tour-expand-sidebar', expand);
+    return () => window.removeEventListener('fluxia-tour-expand-sidebar', expand);
+  }, [cancelTimer]);
+
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const location = useLocation();
@@ -165,13 +185,13 @@ export const AppLayout = ({
   const initials = getInitials(user?.user_metadata?.full_name, user?.email ?? '');
 
   const menuItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
+    { path: '/', icon: LayoutDashboard, label: 'Dashboard', dataTour: 'fluxia-nav-dashboard' },
+    { path: '/transactions', icon: ArrowLeftRight, label: 'Transações', dataTour: 'fluxia-nav-transactions' },
     { path: '/import', icon: Upload, label: 'Importar', dataTour: 'fluxia-nav-import' },
-    { path: '/fixed-expenses', icon: FileText, label: 'Contas fixas' },
-    { path: '/budgets', icon: Target, label: 'Orçamentos' },
-    { path: '/reports', icon: Wallet, label: 'Contas' },
-    { path: '/settings', icon: Settings, label: 'Configurações' },
+    { path: '/fixed-expenses', icon: FileText, label: 'Contas fixas', dataTour: 'fluxia-nav-fixed' },
+    { path: '/budgets', icon: Target, label: 'Orçamentos', dataTour: 'fluxia-nav-budgets' },
+    { path: '/reports', icon: Wallet, label: 'Contas', dataTour: 'fluxia-nav-accounts' },
+    { path: '/settings', icon: Settings, label: 'Configurações', dataTour: 'fluxia-nav-settings' },
   ];
 
   const isActive = (path: string) =>
@@ -200,12 +220,12 @@ export const AppLayout = ({
         )}
       >
         {/* Logo + Pin: mesmo encadeamento que SidebarItem (ícone + span de rótulo); pin absoluto para não empurrar o texto */}
-        <div className={cn(sidebarProminentRowClass, 'text-foreground relative')}>
-          <span className={sidebarProminentIconCellClass}>
+        <div className={cn(sidebarBrandRowClass, 'text-foreground relative')}>
+          <span className={sidebarBrandIconCellClass}>
             <img
               src="/fluxo-icon.png?v=2"
               alt=""
-              className="h-11 w-11 max-h-11 max-w-11 object-contain object-center"
+              className="h-14 w-14 object-contain object-center"
               aria-hidden
             />
           </span>
@@ -213,7 +233,7 @@ export const AppLayout = ({
             <>
               <span
                 className={cn(
-                  sidebarAlignedLabelClass(false, 'bold'),
+                  sidebarBrandLabelClass(false),
                   'tracking-tight fluxo-brand-text pr-10'
                 )}
               >
@@ -292,7 +312,7 @@ export const AppLayout = ({
               active={isActive(item.path)}
               onClick={() => handleNav(item.path)}
               collapsed={collapsed}
-              dataTour={'dataTour' in item ? (item as { dataTour: string }).dataTour : undefined}
+              dataTour={item.dataTour}
             />
           ))}
         </nav>
@@ -336,7 +356,7 @@ export const AppLayout = ({
         <div className="fixed inset-0 z-50 md:hidden bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="w-72 h-full bg-background/90 backdrop-blur-xl border-r border-border/50 p-6 flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <FluxoBrand logoSize="md" textSize="lg" />
+              <FluxoBrand logoSize="lg" textSize="xl" />
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
                 <X size={20} />
               </button>
@@ -391,7 +411,7 @@ export const AppLayout = ({
                   label={item.label}
                   active={isActive(item.path)}
                   onClick={() => handleNav(item.path)}
-                  dataTour={'dataTour' in item ? (item as { dataTour: string }).dataTour : undefined}
+                  dataTour={item.dataTour}
                 />
               ))}
             </nav>

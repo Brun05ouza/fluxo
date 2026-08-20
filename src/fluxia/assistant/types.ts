@@ -7,6 +7,12 @@ export type FluxiaIntent =
   | 'CONFIGURACOES'
   | 'ENTENDER_SCORE'
   | 'ENTENDER_RELATORIO'
+  | 'CONTAS_FIXAS'
+  | 'CONTAS'
+  | 'GREETING'
+  | 'HELP'
+  | 'THANKS'
+  | 'FAREWELL'
   | 'UNKNOWN';
 
 export interface FluxiaResponse {

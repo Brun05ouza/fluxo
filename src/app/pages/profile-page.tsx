@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Camera, Mail, Calendar, ShieldCheck, TrendingUp,
   TrendingDown, ReceiptText, Wallet, Pencil, Check, X,
-  ChevronRight,
+  Tag,
 } from 'lucide-react';
 import { Card, Button, Input, cn } from '@/app/components/ui';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
@@ -168,7 +168,7 @@ export const Profile = () => {
   const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
 
   return (
-    <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="w-full space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
       {/* ── Title ──────────────────────────────────────────────────────── */}
       <div>
@@ -176,10 +176,10 @@ export const Profile = () => {
         <p className="text-muted-foreground mt-1">Personalize suas informações e acompanhe sua atividade.</p>
       </div>
 
-      {/* ── Avatar + name ──────────────────────────────────────────────── */}
+      {/* ── Avatar + dados ─────────────────────────────────────────────── */}
       <Card className="p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <div className="relative group shrink-0">
+        <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
+          <div className="relative group shrink-0 self-center lg:self-start">
             <Avatar className="w-24 h-24 border-4 border-card ring-2 ring-border shadow-lg">
               <AvatarImage src={avatarUrl} alt="Foto de perfil" />
               <AvatarFallback className="text-2xl font-bold text-primary bg-primary/20">
@@ -198,7 +198,7 @@ export const Profile = () => {
           </div>
 
           <div className="flex-1 space-y-4 min-w-0 w-full">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <Input label="Nome completo" value={fullName} onChange={handleFullNameChange} placeholder="Seu nome completo" />
               <Input label="E-mail" value={email} disabled placeholder="—" />
               <Input label="CPF" value={cpf} disabled placeholder="—" />
@@ -226,135 +226,135 @@ export const Profile = () => {
       {/* ── Stats ──────────────────────────────────────────────────────── */}
       <section>
         <h3 className="text-base font-semibold mb-4">Resumo da atividade</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard label="Transações registradas" value={String(txCount)} sub="no total" icon={ReceiptText} color="#6366f1" />
-          <StatCard label="Orçamentos criados"      value={String(budgetCount)} sub="categorias monitoradas" icon={Wallet} color="#0ea5e9" />
-          <StatCard label="Total de receitas"        value={formatCurrencyBRL(totalIncome)} sub="soma das entradas" icon={TrendingUp} color="#22c55e" />
+          <StatCard label="Orçamentos criados" value={String(budgetCount)} sub="categorias monitoradas" icon={Wallet} color="#0ea5e9" />
+          <StatCard label="Total de receitas" value={formatCurrencyBRL(totalIncome)} sub="soma das entradas" icon={TrendingUp} color="#22c55e" />
           <StatCard label="Total de despesas" value={formatCurrencyBRL(totalExpense)} sub={`transações + ${fixedExpenses.filter(e => e.is_active).length} conta${fixedExpenses.filter(e => e.is_active).length !== 1 ? 's' : ''} fixa${fixedExpenses.filter(e => e.is_active).length !== 1 ? 's' : ''}`} icon={TrendingDown} color="#f87171" />
         </div>
         {topCategory && (
           <div className="mt-4 flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <TrendingDown size={18} className="text-primary" />
+              <Tag size={18} className="text-primary" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">Categoria com mais gastos</p>
-              <p className="text-base font-semibold text-foreground">
+              <p className="text-base font-semibold text-foreground truncate">
                 {topCategory[0]} · {formatCurrencyBRL(topCategory[1])}
               </p>
             </div>
-            <ChevronRight size={16} className="text-muted-foreground" />
           </div>
         )}
       </section>
 
-      {/* ── Financial profile ─────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold">Perfil financeiro</h3>
-          {!editingFinancial
-            ? <Button variant="ghost" size="sm" onClick={() => setEditingFinancial(true)}>
-                <Pencil size={14} className="mr-1.5" /> Editar
-              </Button>
-            : <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveFinancial} loading={savingFinancial}>
-                  <Check size={14} className="mr-1" /> Salvar
+      {/* ── Financeiro + conta ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+        <section className="min-w-0">
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <h3 className="text-base font-semibold">Perfil financeiro</h3>
+            {!editingFinancial
+              ? <Button variant="ghost" size="sm" onClick={() => setEditingFinancial(true)}>
+                  <Pencil size={14} className="mr-1.5" /> Editar
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditingFinancial(false)} disabled={savingFinancial}>
-                  <X size={14} />
-                </Button>
-              </div>
-          }
-        </div>
+              : <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveFinancial} loading={savingFinancial}>
+                    <Check size={14} className="mr-1" /> Salvar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingFinancial(false)} disabled={savingFinancial}>
+                    <X size={14} />
+                  </Button>
+                </div>
+            }
+          </div>
 
-        <Card className="p-6">
-          {!editingFinancial ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">Renda mensal</p>
-                <p className="text-2xl font-bold text-foreground">{profile ? formatCurrencyBRL(profile.monthly_income) : '—'}</p>
+          <Card className="p-6 h-full">
+            {!editingFinancial ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Renda mensal</p>
+                  <p className="text-2xl font-bold text-foreground">{profile ? formatCurrencyBRL(profile.monthly_income) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Dia de pagamento</p>
+                  <p className="text-2xl font-bold text-foreground">{profile ? `Dia ${profile.pay_day}` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Onboarding</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {profile?.onboarding_completed_at
+                      ? `Concluído em ${new Date(profile.onboarding_completed_at).toLocaleDateString('pt-BR')}`
+                      : 'Pendente'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">Dia de pagamento</p>
-                <p className="text-2xl font-bold text-foreground">{profile ? `Dia ${profile.pay_day}` : '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium mb-1">Onboarding</p>
-                <p className="text-base font-semibold text-foreground">
-                  {profile?.onboarding_completed_at
-                    ? `Concluído em ${new Date(profile.onboarding_completed_at).toLocaleDateString('pt-BR')}`
-                    : 'Pendente'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground/80">Renda mensal</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/80">Renda mensal</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <input
+                      className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={incomeInput}
+                      onChange={(e) => setIncomeInput(formatBRL(e.target.value))}
+                      placeholder="0,00"
+                      inputMode="numeric"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/80">Dia de pagamento</label>
                   <input
-                    className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    value={incomeInput}
-                    onChange={(e) => setIncomeInput(formatBRL(e.target.value))}
-                    placeholder="0,00"
-                    inputMode="numeric"
+                    type="number"
+                    min={1}
+                    max={31}
+                    className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    value={payDayInput}
+                    onChange={(e) => setPayDayInput(e.target.value)}
+                    placeholder="1–31"
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground/80">Dia de pagamento</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  value={payDayInput}
-                  onChange={(e) => setPayDayInput(e.target.value)}
-                  placeholder="1–31"
-                />
-              </div>
-            </div>
-          )}
-        </Card>
-      </section>
+            )}
+          </Card>
+        </section>
 
-      {/* ── Account info ──────────────────────────────────────────────── */}
-      <section>
-        <h3 className="text-base font-semibold mb-4">Informações da conta</h3>
-        <Card className="divide-y divide-border">
-          {[
-            { label: 'E-mail', value: email, icon: Mail },
-            { label: 'Conta criada em', value: joinedAt, icon: Calendar },
-            {
-              label: 'Autenticação',
-              value: provider === 'google' ? 'Google OAuth' : 'E-mail e senha',
-              icon: ShieldCheck,
-            },
-          ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="flex items-center gap-4 px-5 py-4">
-              <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                <Icon size={16} className="text-muted-foreground" />
+        <section className="min-w-0">
+          <h3 className="text-base font-semibold mb-4">Informações da conta</h3>
+          <Card className="divide-y divide-border h-full">
+            {[
+              { label: 'E-mail', value: email, icon: Mail },
+              { label: 'Conta criada em', value: joinedAt, icon: Calendar },
+              {
+                label: 'Autenticação',
+                value: provider === 'google' ? 'Google OAuth' : 'E-mail e senha',
+                icon: ShieldCheck,
+              },
+            ].map(({ label, value, icon: Icon }) => (
+              <div key={label} className="flex items-center gap-4 px-5 py-4">
+                <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+                  <Icon size={16} className="text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{value}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-medium text-foreground truncate">{value}</p>
+            ))}
+            {profile?.is_admin && (
+              <div className="flex items-center gap-4 px-5 py-4">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={16} className="text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Permissão</p>
+                  <p className="text-sm font-semibold text-primary">Administrador</p>
+                </div>
               </div>
-            </div>
-          ))}
-          {profile?.is_admin && (
-            <div className="flex items-center gap-4 px-5 py-4">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <ShieldCheck size={16} className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Permissão</p>
-                <p className="text-sm font-semibold text-primary">Administrador</p>
-              </div>
-            </div>
-          )}
-        </Card>
-      </section>
+            )}
+          </Card>
+        </section>
+      </div>
 
     </div>
   );

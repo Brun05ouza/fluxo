@@ -50,8 +50,18 @@ export function useBudgets(userId: string | undefined) {
   };
 
   const deleteBudget = async (id: string) => {
+    if (!userId) return { error: new Error('Não autenticado') };
+    let snapshot: Budget[] = [];
+    setBudgets((prev) => {
+      snapshot = prev;
+      return prev.filter((b) => b.id !== id);
+    });
     const { error } = await supabase.from('budgets').delete().eq('id', id).eq('user_id', userId);
-    return { error: error ? new Error(error.message) : null };
+    if (error) {
+      setBudgets(snapshot);
+      return { error: new Error(error.message) };
+    }
+    return { error: null };
   };
 
   return { budgets, loading, addBudget, updateBudget, deleteBudget };

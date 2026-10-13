@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Schema para Importação de Extrato
 
 > Auditoria FASE 0 — Mapeamento do schema e fluxo de transações para a feature de importação.
@@ -9,7 +11,7 @@
 | Coluna         | Tipo          | Nullable | Descrição                          |
 |----------------|---------------|----------|------------------------------------|
 | id             | UUID          | NO       | PK, gen_random_uuid()              |
-| user_id        | UUID          | NO       | FK auth.users                      |
+| user_id        | UUID          | NO       | FK neon_auth.user                      |
 | title          | TEXT          | NO       | Descrição principal                |
 | description    | TEXT          | YES      | Observação opcional                |
 | category       | TEXT          | NO       | Valor de CATEGORIES (constante)    |
@@ -54,11 +56,11 @@ addTransaction(tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'>)
 ```
 
 **Implementação:**
-- `supabase.from('transactions').insert({ ...tx, user_id: userId })`
+- `neon.from('transactions').insert({ ...tx, user_id: userId })`
 - user_id vem do hook (auth)
 - Não existe `addTransactions` em lote — importação precisará:
   - Opção A: loop com addTransaction (N inserts)
-  - Opção B: `supabase.from('transactions').insert([...])` em lote (1 insert)
+  - Opção B: `neon.from('transactions').insert([...])` em lote (1 insert)
 
 ---
 
@@ -99,4 +101,4 @@ Para importação: usar **"Transferência"** ou **"Débito Automático"** como p
 1. **Normalizar** raw rows → `{ title, amount, date }` mínimo
 2. **Enriquecer** → category (sugerida), payment_method (padrão)
 3. **Mapear para insert** → `Omit<Transaction, 'id'|'user_id'|'created_at'>`
-4. **Commit** → usar `addTransaction` em loop ou `supabase.insert([...])` em lote
+4. **Commit** → usar `addTransaction` em loop ou `neon.insert([...])` em lote

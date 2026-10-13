@@ -14,8 +14,8 @@ Objetivo central: transformar o Fluxo em uma plataforma com dominio financeiro c
 
 - **Frontend React + Vite** com rotas em `src/app/App.tsx`.
 - **UI** baseada em componentes `src/app/components` e primitives em `src/app/components/ui`.
-- **Persistencia direta** em hooks (`useTransactions`, `useAccounts`, `useBudgets`, etc.) chamando Supabase.
-- **Banco Supabase** com migrations incrementais em `supabase/migrations`.
+- **Persistencia direta** em hooks (`useTransactions`, `useAccounts`, `useBudgets`, etc.) chamando Neon.
+- **Banco Neon** com migrations incrementais em `neon/migrations`.
 
 ### 1.2 Modulos existentes
 
@@ -75,7 +75,7 @@ src/features/finance/
     use-cases/
     services/
   infrastructure/
-    repositories/supabase/
+    repositories/neon/
     mappers/
     adapters/
   presentation/
@@ -86,7 +86,7 @@ src/features/finance/
 
 ### 3.2 Contratos e fronteiras
 
-- `domain`: regra pura, sem UI e sem Supabase.
+- `domain`: regra pura, sem UI e sem Neon.
 - `application`: orquestra regras e repositorios.
 - `infrastructure`: implementa repositorios e integracoes.
 - `presentation`: converte input de tela em comandos de dominio.
@@ -278,9 +278,9 @@ src/features/finance/
     use-cases/create-transfer.ts
     use-cases/pay-invoice.ts
   infrastructure/
-    repositories/supabase-transaction-repo.ts
-    repositories/supabase-account-repo.ts
-    repositories/supabase-credit-card-repo.ts
+    repositories/neon-transaction-repo.ts
+    repositories/neon-account-repo.ts
+    repositories/neon-credit-card-repo.ts
   presentation/
     hooks/use-transaction-actions.ts
     hooks/use-balance-projection.ts
@@ -302,7 +302,7 @@ src/features/finance/
 
 ## 11) UX/UI recomendada (logica, sem copia visual)
 
-- Formulario de transacao curto + secao “mais detalhes”.
+- Formulario de transacao curto + secao ï¿½mais detalhesï¿½.
 - Separar com clareza:
   - data da compra
   - data de pagamento
@@ -348,31 +348,31 @@ src/features/finance/
 
 ## 13) Prioridades por fase
 
-### Fase 0 — Documento e baseline (concluida neste ciclo)
+### Fase 0 ï¿½ Documento e baseline (concluida neste ciclo)
 - Consolidar arquitetura funcional e plano de execucao.
 
-### Fase 1 — Core contas + transacoes (prioridade maxima)
+### Fase 1 ï¿½ Core contas + transacoes (prioridade maxima)
 - Tipos de transacao + engine de saldo/previsao.
 - Transferencia espelhada.
 - Ignorar transacao com impacto analitico controlado.
 
-### Fase 2 — Cartoes + faturas
+### Fase 2 ï¿½ Cartoes + faturas
 - Entidades, servicos e regras de fechamento/pagamento.
 
-### Fase 3 — Planejamento + metas
+### Fase 3 ï¿½ Planejamento + metas
 - Orcamento por itens e objetivos manuais.
 
-### Fase 4 — Relatorios + dashboard modular
+### Fase 4 ï¿½ Relatorios + dashboard modular
 - Filtros avancados e configuracao por usuario.
 
-### Fase 5 — Exportacao/importacao avancada + integracoes
+### Fase 5 ï¿½ Exportacao/importacao avancada + integracoes
 - Exportadores, normalizacao, reconciliacao e logs.
 
 ---
 
 ## 14) Decisoes de produto adotadas
 
-- Priorizar **fluxo funcional** sobre estética.
+- Priorizar **fluxo funcional** sobre estï¿½tica.
 - Priorizar **consistencia financeira** sobre simplificacao de modelagem.
 - Priorizar **modularidade** para escalar sem reescrever.
 - Manter compatibilidade progressiva com telas atuais durante a migracao.

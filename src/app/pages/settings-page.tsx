@@ -38,7 +38,7 @@ import {
 } from '@/app/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/app/components/ThemeProvider';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { formatCurrencyBRL, maskBRLInput, parseBRLInput } from '@/lib/format-currency';
 import { toast } from 'sonner';
@@ -111,23 +111,9 @@ export const Settings = () => {
   const handleRestoreAccount = async () => {
     if (!user?.id) return;
     setResetting(true);
-    const uid = user.id;
-    const errors: string[] = [];
-    const { error: e1 } = await supabase.from('transactions').delete().eq('user_id', uid);
-    if (e1) errors.push(e1.message);
-    const { error: e2 } = await supabase.from('budgets').delete().eq('user_id', uid);
-    if (e2) errors.push(e2.message);
-    const { error: e3 } = await supabase.from('fixed_expenses').delete().eq('user_id', uid);
-    if (e3) errors.push(e3.message);
-    const { error: e4 } = await supabase.from('accounts').delete().eq('user_id', uid);
-    if (e4) errors.push(e4.message);
-    const { error: e5 } = await supabase.from('financial_profile').delete().eq('id', uid);
-    if (e5) errors.push(e5.message);
+    const { error } = await neon.rpc('restore_financial_data');
     setResetting(false);
-    if (errors.length > 0) {
-      toast.error('Erro ao restaurar: ' + errors.join('; '));
-      return;
-    }
+    if (error) { toast.error('Erro ao restaurar: ' + error.message); return; }
     toast.success('Conta restaurada! Recarregando...');
     window.location.reload();
   };

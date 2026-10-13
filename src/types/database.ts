@@ -109,6 +109,7 @@ export interface CreditCardInvoiceItem {
 }
 
 export interface Transaction {
+  planning_item_id?: string | null;
   id: string;
   user_id: string;
   title: string;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CreditCardInvoice, CreditCardInvoiceItem } from '@/types/database';
-import { supabaseCreditCardsRepository } from '@/features/finance/infrastructure/repositories/supabase-credit-cards-repository';
+import { neonCreditCardsRepository } from '@/features/finance/infrastructure/repositories/neon-credit-cards-repository';
 
 export function useCreditCardInvoices(userId: string | undefined, cardId?: string) {
   const [invoices, setInvoices] = useState<CreditCardInvoice[]>([]);
@@ -12,7 +12,7 @@ export function useCreditCardInvoices(userId: string | undefined, cardId?: strin
       setLoading(false);
       return;
     }
-    const { data, error } = await supabaseCreditCardsRepository.listInvoices(userId, cardId);
+    const { data, error } = await neonCreditCardsRepository.listInvoices(userId, cardId);
     if (!error) setInvoices((data as CreditCardInvoice[]) ?? []);
     setLoading(false);
   }, [userId, cardId]);
@@ -24,7 +24,7 @@ export function useCreditCardInvoices(userId: string | undefined, cardId?: strin
 
   const fetchItems = async (invoiceId: string): Promise<CreditCardInvoiceItem[]> => {
     if (!userId) return [];
-    const { data, error } = await supabaseCreditCardsRepository.listInvoiceItems(userId, invoiceId);
+    const { data, error } = await neonCreditCardsRepository.listInvoiceItems(userId, invoiceId);
     if (error) return [];
     return (data as CreditCardInvoiceItem[]) ?? [];
   };
@@ -32,7 +32,7 @@ export function useCreditCardInvoices(userId: string | undefined, cardId?: strin
   const payInvoice = async (invoice: CreditCardInvoice, amountToPay: number, paymentAccountId: string | null) => {
     if (!userId) return { error: new Error('Não autenticado') };
     if (amountToPay <= 0) return { error: new Error('Valor de pagamento deve ser maior que zero.') };
-    const [updateResult, txResult] = await supabaseCreditCardsRepository.payInvoice({
+    const [updateResult, txResult] = await neonCreditCardsRepository.payInvoice({
       userId,
       invoice,
       amountToPay,

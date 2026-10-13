@@ -1,3 +1,4 @@
+import { useFileUrl } from '@/hooks/useFileUrl';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -182,6 +183,7 @@ export const AppLayout = ({
   const location = useLocation();
   const navigate = useNavigate();
   const pathname = location.pathname;
+  const avatarUrl = useFileUrl(user?.user_metadata?.avatar_url);
   const initials = getInitials(user?.user_metadata?.full_name, user?.email ?? '');
 
   const menuItems = [
@@ -317,38 +319,6 @@ export const AppLayout = ({
           ))}
         </nav>
 
-        <div className="border-t border-border/50 space-y-1 p-2">
-          <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-            className={cn(sidebarRowClass, 'transition-colors hover:bg-primary/5', collapsed && 'justify-center')}
-          >
-            <span className={sidebarIconCellClass}>
-              {theme === 'dark' ? (
-                <Sun size={20} className="shrink-0 text-muted-foreground" />
-              ) : (
-                <Moon size={20} className="shrink-0 text-muted-foreground" />
-              )}
-            </span>
-            <span className={cn(sidebarLabelClass(collapsed), 'text-sm text-muted-foreground')}>
-              {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-            </span>
-          </button>
-          <button
-            onClick={onLogout}
-            title="Sair"
-            className={cn(
-              sidebarRowClass,
-              'transition-colors text-destructive hover:bg-destructive/10',
-              collapsed && 'justify-center'
-            )}
-          >
-            <span className={sidebarIconCellClass}>
-              <LogOut size={20} className="shrink-0" />
-            </span>
-            <span className={cn(sidebarLabelClass(collapsed), 'text-sm')}>Sair</span>
-          </button>
-        </div>
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -415,16 +385,7 @@ export const AppLayout = ({
                 />
               ))}
             </nav>
-            <div className="pt-4 border-t border-border/50 space-y-2">
-              <Button variant="ghost" className="w-full justify-start gap-3" onClick={toggleTheme}>
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start gap-3 text-destructive" onClick={onLogout}>
-                <LogOut size={20} />
-                <span>Sair</span>
-              </Button>
-            </div>
+
           </div>
         </div>
       )}
@@ -446,13 +407,23 @@ export const AppLayout = ({
             <Button size="icon" variant="ghost" className="relative hover:bg-muted/50 rounded-full" title="Notificações (em breve)">
               <Bell size={20} />
             </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              className="hover:bg-muted/50 rounded-full"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   className="rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <Avatar className="w-9 h-9 md:w-10 md:h-10 border-2 border-background">
-                    <AvatarImage src={user?.user_metadata?.avatar_url as string | undefined} alt="Perfil" />
+                    <AvatarImage src={avatarUrl} alt="Perfil" />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-blue-500 text-primary-foreground text-sm font-bold">
                       {initials}
                     </AvatarFallback>

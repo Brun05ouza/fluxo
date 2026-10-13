@@ -1,61 +1,69 @@
-# Fluxo - Controle Financeiro
+# Fluxo
 
-Aplicação de controle financeiro com autenticação Supabase, transações e orçamentos.
+Aplicação React/Vite de controle financeiro com banco PostgreSQL, autenticação e Data API no Neon.
 
-## Estrutura do projeto
+## Desenvolvimento
 
-Veja [docs/ESTRUTURA_DO_PROJETO.md](docs/ESTRUTURA_DO_PROJETO.md) para a organização das pastas.
-
-## Cérebro do projeto (Obsidian)
-
-O mapa de domínio, links entre áreas e caminhos “certos” no código está no vault **`Fluxo/`** (abra essa pasta no Obsidian; entrada: `Fluxo/Índice - Mapa do cérebro.md`). No Cursor, a regra `.cursor/rules/obsidian-cerebro-fluxo.mdc` orienta a IA a consultar esse vault antes de mudanças amplas.
-
-## Executar
-
-Run `npm i` to install the dependencies.
-
-Run `npm run dev` to start the development server.
-
-## Autenticação (Supabase)
-
-O projeto usa Supabase Auth. O Vite lê **`VITE_SUPABASE_URL`** e **`VITE_SUPABASE_ANON_KEY`** do arquivo **`.env`** na raiz. Se não existir `.env`, usa o fallback em `src/config/supabase.ts`.
-
-### Erro `ERR_NAME_NOT_RESOLVED` / `Failed to fetch` no login
-
-O navegador não consegue resolver o host do Supabase (DNS). Causas comuns:
-
-1. **Você usa Supabase local (`supabase start`)** mas o app ainda aponta para a nuvem — crie `.env` com a API local:
-   ```bash
-   npx supabase status
-   ```
-   Copie **API URL** (ex.: `http://127.0.0.1:54321`) e **anon key** para `.env` (veja `.env.example`) e **reinicie** `npm run dev`.
-
-2. **Projeto na nuvem removido, pausado ou URL errada** — abra [Supabase Dashboard](https://supabase.com/dashboard) → seu projeto → **Settings → API** e coloque **Project URL** e **anon public** no `.env`.
-
-3. **Rede / firewall / DNS** bloqueando `*.supabase.co`.
-
-Sempre que alterar `.env`, pare e suba de novo o `npm run dev`.
-
-### Credenciais no `.env` (nuvem ou local)
-
-```
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-anon-key
+```powershell
+npm install
+neon deploy
+npm run neon:env
+npm run db:migrate
+npm run dev
 ```
 
-Para desenvolvimento local com CLI, use a URL e a chave mostradas por `supabase status` (não o fallback do repositório).
+O projeto está vinculado ao Neon `still-bonus-27942135`, branch `production`, região São Paulo. A configuração de serviços fica em `neon.ts`. O frontend é servido pelo Vite e pode ser hospedado na Vercel.
 
-### Configuração no Supabase Dashboard
+## Ambiente
 
-1. Em **Authentication** → **Providers**, confirme que **Email** está habilitado.
-2. Em **Authentication** → **URL Configuration**, adicione sua URL de produção (e `http://localhost:5173` para desenvolvimento) em **Redirect URLs**.
-3. Para desativar a confirmação de e-mail (útil em desenvolvimento): **Authentication** → **Providers** → **Email** → desmarque "Confirm email".
-4. **Erro "email rate limit exceeded" (429)?** O Supabase limita o envio de e-mails. Solução: desative "Confirm email" no passo 3 — assim o cadastro não envia e-mail e não atinge o limite. Ou aguarde ~1h para o limite resetar.
+`neon deploy` grava as variáveis em `.env.local`. `npm run neon:env` cria os aliases públicos usados pelo Vite:
 
-### Banco de dados
+- `VITE_NEON_AUTH_URL`: URL do Neon Auth.
+- `VITE_NEON_DATA_API_URL`: URL da Data API.
+- `DATABASE_URL_UNPOOLED`: conexão privada para migrations e scripts administrativos.
 
-1. No Supabase Dashboard, vá em **SQL Editor**.
-2. Execute em ordem:
-   - `supabase/migrations/001_initial.sql` — tabelas `transactions` e `budgets`
-   - `supabase/migrations/002_users_table.sql` — tabela `users` (nome, CPF, email) com sync automático do cadastro. A senha permanece criptografada em `auth.users`.
-   - `supabase/migrations/006_onboarding.sql` — colunas `onboarding_completed_at` e `onboarding_data` em `financial_profile` (primeiro acesso no app). Quem já tinha perfil recebe a data automaticamente e não passa pelo wizard de novo.
+Nunca coloque a conexão PostgreSQL ou credenciais administrativas em variáveis `VITE_*`. Na hospedagem, configure apenas as duas URLs públicas para o frontend e registre o domínio no Neon Auth.
+
+## Banco e permissões
+
+As migrations versionadas ficam em `neon/migrations`. O script `scripts/migrate.mjs` aplica cada arquivo uma vez, em transação, verificando seu checksum. Valide alterações numa branch de teste antes de produção.
+
+A Data API aplica RLS: cada usuário acessa somente seus registros. `is_admin` não pode ser modificado pelo navegador. As funções administrativas verificam a permissão no banco. A restauração de dados financeiros é transacional e preserva a identidade e a permissão administrativa.
+
+Os hooks atualizam após gravações, entre abas, ao voltar para a janela e a cada 30 segundos enquanto a página está visível.
+
+## Arquivos
+
+Avatares (até 1 MB) e anexos (até 5 MB) são armazenados na tabela `files`, protegida por RLS, e referenciados como `neon-file:UUID`. Esse caminho foi adotado porque Object Storage não está disponível na região do projeto. Arquivos são carregados como blobs autenticados.
+
+## Contas migradas
+
+Os usuários existentes mantêm seus IDs, perfis e dados financeiros. As senhas antigas não puderam ser exportadas/importadas. No primeiro acesso, use **Recupere seu acesso**, informe o e-mail, receba o código e defina uma nova senha.
+
+Quando a confirmação de e-mail está habilitada no Neon, novos cadastros confirmam por código. A configuração existente do projeto foi preservada. Login com Google usa o provedor configurado no Neon Auth.
+
+## Verificação
+
+```powershell
+npm run build
+npm test
+node --env-file=.env.local scripts/verify-neon.mjs
+```
+
+O último comando cria uma conta temporária, verifica autenticação, sessão, CRUD, arquivos e isolamento de dados, e a remove ao terminar. A entrega real de e-mails e o consentimento Google precisam ser conferidos com a conta do usuário.
+
+## Backup e importação
+
+Os scripts de exportação/importação são administrativos. Credenciais da origem ficam em `.env.migration.local`, e os backups em `.migration-backup/`; ambos são ignorados pelo Git. A importação inicial exige Neon Auth vazio e impede reimportação do mesmo backup. O banco de origem foi mantido para recuperação.
+
+## Planejamento mensal
+
+A renda configurada é líquida. Use Preparar mês no Dashboard, Transações, Contas fixas ou Orçamentos: a renda principal, rendas extras e contas ativas geram lançamentos pendentes ligados à competência do mês. O botão é idempotente, inclusive para previsões excluídas. Os vencimentos são limitados ao último dia válido do mês.
+
+Confirme o recebimento/pagamento em Transações. O saldo real considera a confirmação e a data efetiva. Se já existe um lançamento, use Vincular lançamento existente no menu da previsão; a operação preserva valor/status reais e remove a previsão. Editar configurações afeta os próximos meses preparados; previsões existentes podem ser editadas em Transações.
+
+Orçamentos são limites por categoria, não despesas. O gasto realizado é mensal, exclui pendentes/ignorados, transferências e pagamentos de fatura (para não repetir a compra). Previsões pendentes reservam o disponível, e contas mensais não são extrapoladas como gastos diários.
+
+Depois de novas migrations, execute neon data-api refresh-schema --database neondb.
+
+Teste de integração: node --env-file=.env.local scripts/verify-monthly-plan.mjs. Cria e remove uma conta temporária; valida renda extra, idempotência, fevereiro, vínculo com salário recebido e restauração.

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CreditCard } from '@/types/database';
 import {
-  supabaseCreditCardsRepository,
+  neonCreditCardsRepository,
   type CreditCardInsert,
-} from '@/features/finance/infrastructure/repositories/supabase-credit-cards-repository';
+} from '@/features/finance/infrastructure/repositories/neon-credit-cards-repository';
 
 export function useCreditCards(userId: string | undefined) {
   const [cards, setCards] = useState<CreditCard[]>([]);
@@ -15,7 +15,7 @@ export function useCreditCards(userId: string | undefined) {
       setLoading(false);
       return;
     }
-    const { data, error } = await supabaseCreditCardsRepository.listCards(userId);
+    const { data, error } = await neonCreditCardsRepository.listCards(userId);
     if (!error) setCards((data as CreditCard[]) ?? []);
     setLoading(false);
   }, [userId]);
@@ -27,21 +27,21 @@ export function useCreditCards(userId: string | undefined) {
 
   const addCard = async (row: CreditCardInsert) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { data, error } = await supabaseCreditCardsRepository.insertCard(userId, row);
+    const { data, error } = await neonCreditCardsRepository.insertCard(userId, row);
     if (!error) await refetch();
     return { error: error ? new Error(error.message) : null, id: data?.id as string | undefined };
   };
 
   const updateCard = async (cardId: string, patch: Partial<CreditCardInsert>) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { error } = await supabaseCreditCardsRepository.updateCard(userId, cardId, patch);
+    const { error } = await neonCreditCardsRepository.updateCard(userId, cardId, patch);
     if (!error) await refetch();
     return { error: error ? new Error(error.message) : null };
   };
 
   const deleteCard = async (cardId: string) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { error } = await supabaseCreditCardsRepository.deleteCard(userId, cardId);
+    const { error } = await neonCreditCardsRepository.deleteCard(userId, cardId);
     if (!error) await refetch();
     return { error: error ? new Error(error.message) : null };
   };

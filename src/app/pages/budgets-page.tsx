@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { MonthlyPlan } from '@/app/components/MonthlyPlan';
+import { isBudgetExpense, isSettled } from '@/lib/financial-status';
 import {
   Plus,
   Target,
@@ -75,7 +77,7 @@ export const Budgets = () => {
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const forecast = useForecast(currentMonth, transactions, budgets);
   const [showAdd, setShowAdd] = useState(false);
-  const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
+  const [newCategory, setNewCategory] = useState<string>(CATEGORIES[0]);
   const [newLimit, setNewLimit] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -98,11 +100,13 @@ export const Budgets = () => {
 
   const allCategoriesBudgeted = CATEGORIES.every((c) => budgets.some((b) => b.category === c));
 
-  const spentByCategory = getSpentByCategory(transactions);
+  const monthTransactions = transactions.filter(t => t.date.startsWith(currentMonth));
+  const spentByCategory = getSpentByCategory(monthTransactions);
   const budgetProgress = getBudgetProgress(budgets, spentByCategory);
   const totalBudgeted = budgets.reduce((s, b) => s + Number(b.limit_amount), 0);
   const totalSpent = Object.values(spentByCategory).reduce((a, b) => a + b, 0);
   const restanteMes = Math.max(0, totalBudgeted - totalSpent);
+  const committedByCategory = monthTransactions.filter(t=>isBudgetExpense(t) && !isSettled(t)).reduce((acc,t)=>{acc[t.category]=(acc[t.category]||0)+Math.abs(Number(t.amount));return acc;},{} as Record<string,number>);
 
   const resetAddForm = () => {
     setShowAdd(false);
@@ -199,6 +203,8 @@ export const Budgets = () => {
         </Button>
       </div>
 
+      <MonthlyPlan month={currentMonth} />
+      <p className="text-sm text-muted-foreground">Orçamentos são limites mensais por categoria. Contas fixas geram previsões em Transações; ao pagar, o mesmo lançamento passa a consumir o orçamento. Criar um limite não gera uma despesa.</p>
       <Dialog
         open={showAdd}
         onOpenChange={(open) => {
@@ -346,6 +352,7 @@ export const Budgets = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg">{budget.category}</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Previsto a pagar: {formatCurrencyBRL(committedByCategory[budget.category] || 0)} · Disponível após previsões: {formatCurrencyBRL(Number(budget.limit_amount) - budget.spent - (committedByCategory[budget.category] || 0))}</p>
                     {editId === budget.id ? (
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-muted-foreground">R$</span>

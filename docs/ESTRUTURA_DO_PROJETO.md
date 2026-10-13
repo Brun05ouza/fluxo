@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Estrutura do Projeto Fluxo
 
 ## Visão geral
@@ -23,7 +25,7 @@ Fluxo/
 │   │       ├── ui.tsx           # Componentes base (Button, Input, Card, etc.)
 │   │       └── ui/              # Componentes shadcn/ui (primitivos)
 │   ├── config/             # Configurações
-│   │   └── supabase.ts     # Credenciais do Supabase
+│   │   └── neon.ts     # Credenciais do Neon
 │   ├── contexts/
 │   │   └── AuthContext.tsx # Estado de autenticação
 │   ├── hooks/
@@ -33,7 +35,7 @@ Fluxo/
 │   │   ├── useFixedExpenses.ts
 │   │   └── useForecast.ts
 │   ├── lib/                # Utilitários e serviços
-│   │   ├── supabase.ts     # Cliente Supabase
+│   │   ├── neon.ts     # Cliente Neon
 │   │   ├── category-icons.tsx
 │   │   ├── transaction-utils.ts
 │   │   ├── forecast.ts     # Cálculo de previsão e risco
@@ -42,7 +44,7 @@ Fluxo/
 │   ├── types/
 │   │   └── database.ts     # Tipos e constantes
 │   └── main.tsx
-├── supabase/
+├── neon/
 │   ├── migrations/         # Migrations SQL
 │   └── functions/          # Edge Functions
 ├── docs/                   # Documentação
@@ -56,12 +58,12 @@ Fluxo/
 | **public/** | Arquivos servidos diretamente. Ícones e assets devem ficar aqui. |
 | **src/app/** | Componentes e páginas da aplicação. |
 | **src/app/components/ui/** | Componentes shadcn/ui (accordion, dialog, etc.). |
-| **src/config/** | Configurações (Supabase, env). |
+| **src/config/** | Configurações (Neon, env). |
 | **src/contexts/** | Contextos React (auth). |
 | **src/hooks/** | Hooks customizados (transações, orçamentos). |
-| **src/lib/** | Utilitários, cliente Supabase, validações. |
+| **src/lib/** | Utilitários, cliente Neon, validações. |
 | **src/types/** | Definições TypeScript. |
-| **supabase/migrations/** | SQL para criar tabelas. Execute no SQL Editor do Supabase. |
+| **neon/migrations/** | SQL para criar tabelas. Execute no SQL Editor do Neon (schema atual em neon/migrations). |
 
 ## Ícones e assets
 

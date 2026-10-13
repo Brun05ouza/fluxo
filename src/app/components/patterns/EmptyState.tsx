@@ -10,7 +10,7 @@ interface EmptyStateProps {
   icon: React.ReactNode;
   title: string;
   description: string;
-  bullets?: string[];
+  bullets?: readonly string[];
   primaryAction?: EmptyStateAction;
   secondaryAction?: EmptyStateAction;
   onGuideClick?: () => void;

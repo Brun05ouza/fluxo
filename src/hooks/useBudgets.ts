@@ -1,5 +1,6 @@
+import { subscribeData } from '@/lib/data-sync';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { Budget } from '@/types/database';
 
 export function useBudgets(userId: string | undefined) {
@@ -14,7 +15,7 @@ export function useBudgets(userId: string | undefined) {
     }
 
     const fetch = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('budgets')
         .select('*')
         .eq('user_id', userId)
@@ -25,19 +26,12 @@ export function useBudgets(userId: string | undefined) {
 
     fetch();
 
-    const channel = supabase
-      .channel('budgets-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets', filter: `user_id=eq.${userId}` }, fetch)
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeData('budgets', fetch);
   }, [userId]);
 
   const addBudget = async (budget: Omit<Budget, 'id' | 'user_id' | 'created_at'>) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { error } = await supabase.from('budgets').insert({
+    const { error } = await neon.from('budgets').insert({
       ...budget,
       user_id: userId,
     });
@@ -45,7 +39,7 @@ export function useBudgets(userId: string | undefined) {
   };
 
   const updateBudget = async (id: string, budget: Partial<Budget>) => {
-    const { error } = await supabase.from('budgets').update(budget).eq('id', id).eq('user_id', userId);
+    const { error } = await neon.from('budgets').update(budget).eq('id', id).eq('user_id', userId);
     return { error: error ? new Error(error.message) : null };
   };
 
@@ -56,7 +50,7 @@ export function useBudgets(userId: string | undefined) {
       snapshot = prev;
       return prev.filter((b) => b.id !== id);
     });
-    const { error } = await supabase.from('budgets').delete().eq('id', id).eq('user_id', userId);
+    const { error } = await neon.from('budgets').delete().eq('id', id).eq('user_id', userId);
     if (error) {
       setBudgets(snapshot);
       return { error: new Error(error.message) };

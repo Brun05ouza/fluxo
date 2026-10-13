@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # UX Plan — Fluxo SaaS
 
 Documento de auditoria e decisões para elevar o Fluxo a produto SaaS vendável (referência funcional: Mobills; diferenciais: Flux.ia, hábitos, score, mindful finance).

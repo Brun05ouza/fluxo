@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, X, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 
 interface AdminLoginModalProps {
   onSuccess: () => void;
@@ -40,10 +40,11 @@ export function AdminLoginModal({ onSuccess, onClose }: AdminLoginModalProps) {
     }
 
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: session } = await neon.auth.getSession();
+    const user = session?.user;
     if (!user) { setError('Sessão expirada.'); setLoading(false); return; }
 
-    const { data, error: dbErr } = await supabase
+    const { data, error: dbErr } = await neon
       .from('financial_profile')
       .select('is_admin')
       .eq('id', user.id)

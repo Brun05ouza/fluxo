@@ -86,8 +86,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 
 // --- Card ---
-export const Card = ({ className, children }: { className?: string, children: React.ReactNode }) => (
-  <div className={cn('rounded-[var(--radius)] border border-border bg-card p-6 shadow-xs', className)}>
+export const Card = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div {...props} className={cn('rounded-[var(--radius)] border border-border bg-card p-6 shadow-xs', className)}>
     {children}
   </div>
 );

@@ -1,3 +1,4 @@
+import { MonthlyPlan } from './MonthlyPlan';
 import React, { useState } from 'react';
 import { Plus, X, Calendar, FileText, Trash2 } from 'lucide-react';
 import { Card, Button, Input } from './ui';
@@ -25,7 +26,7 @@ export const FixedExpenses = () => {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDay, setDueDay] = useState('10');
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<FixedExpense | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -91,6 +92,7 @@ export const FixedExpenses = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <MonthlyPlan month={`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`} />
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Contas fixas</h2>

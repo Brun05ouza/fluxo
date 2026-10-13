@@ -89,7 +89,7 @@ export const ImportPreviewTable = ({
                 </td>
                 <td className="px-4 py-2">
                   {row.isDuplicate ? (
-                    <Badge variant="secondary">Duplicado</Badge>
+                    <Badge variant="outline">Duplicado</Badge>
                   ) : (
                     <CategoryInlineSelect
                       value={row.category}

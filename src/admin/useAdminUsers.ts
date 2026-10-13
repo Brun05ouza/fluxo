@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { AdminUser } from './types';
 
 export function useAdminUsers() {
@@ -10,7 +10,7 @@ export function useAdminUsers() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase.rpc('admin_get_users');
+    const { data, error: err } = await neon.rpc('admin_get_users');
     setLoading(false);
     if (err) {
       setError(err.message);
@@ -20,7 +20,7 @@ export function useAdminUsers() {
   }, []);
 
   const setUserAdmin = useCallback(async (userId: string, isAdmin: boolean) => {
-    const { error: err } = await supabase.rpc('admin_set_user_admin', {
+    const { error: err } = await neon.rpc('admin_set_user_admin', {
       target_id: userId,
       admin_status: isAdmin,
     });

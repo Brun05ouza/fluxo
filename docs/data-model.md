@@ -1,9 +1,11 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Modelo de Dados — Fluxo
 
 ## Diagrama Lógico
 
 ```
-auth.users (Supabase Auth)
+neon_auth.user (Neon Auth)
     │
     ├── users (espelho: nome, cpf, email)
     ├── financial_profile (monthly_income, pay_day)
@@ -18,7 +20,7 @@ auth.users (Supabase Auth)
 | Coluna         | Tipo           | Descrição                          |
 |----------------|----------------|------------------------------------|
 | id             | UUID           | PK                                 |
-| user_id        | UUID           | FK auth.users                      |
+| user_id        | UUID           | FK neon_auth.user                      |
 | title          | TEXT           | Descrição da transação             |
 | description    | TEXT           | Opcional                           |
 | category       | TEXT           | Ex: Alimentação, Transporte        |
@@ -33,7 +35,7 @@ auth.users (Supabase Auth)
 | Coluna       | Tipo           | Descrição              |
 |--------------|----------------|------------------------|
 | id           | UUID           | PK                     |
-| user_id      | UUID           | FK auth.users          |
+| user_id      | UUID           | FK neon_auth.user          |
 | category     | TEXT           | Mesma lista de categories |
 | limit_amount | DECIMAL(12,2)  | Limite mensal          |
 | created_at   | TIMESTAMPTZ    |                        |
@@ -53,7 +55,7 @@ UNIQUE(user_id, category)
 | Coluna    | Tipo        | Descrição           |
 |-----------|-------------|---------------------|
 | id        | UUID        | PK                  |
-| user_id   | UUID        | FK auth.users       |
+| user_id   | UUID        | FK neon_auth.user       |
 | title     | TEXT        | Nome da obrigação   |
 | amount    | DECIMAL     | Valor               |
 | due_day   | INT         | Dia 1-31            |

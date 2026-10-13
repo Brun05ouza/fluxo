@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { OnboardingData } from '@/types/database';
 
 /** Dias de vencimento padrão para contas criadas no onboarding */
@@ -6,6 +6,9 @@ export const ONBOARDING_DUE_DAY_RENT = 5;
 export const ONBOARDING_DUE_DAY_ELECTRICITY = 10;
 
 export interface OnboardingAnswers {
+  payDay?: number;
+  rentDueDay?: number;
+  electricityDueDay?: number;
   mainIncome: number;
   hasExtraIncome: boolean;
   extraLabel: string;
@@ -48,11 +51,11 @@ export async function completeOnboarding(
 
   const now = new Date().toISOString();
 
-  const { error: profileError } = await supabase.from('financial_profile').upsert(
+  const { error: profileError } = await neon.from('financial_profile').upsert(
     {
       id: userId,
       monthly_income: totalIncome,
-      pay_day: 1,
+      pay_day: Math.min(31, Math.max(1, answers.payDay || 1)),
       onboarding_completed_at: now,
       onboarding_data: onboardingData,
       updated_at: now,
@@ -76,7 +79,7 @@ export async function completeOnboarding(
     fixedRows.push({
       title: 'Aluguel / moradia',
       amount: answers.rentAmount,
-      due_day: ONBOARDING_DUE_DAY_RENT,
+      due_day: Math.min(31, Math.max(1, answers.rentDueDay || ONBOARDING_DUE_DAY_RENT)),
       category: 'Moradia',
       is_active: true,
     });
@@ -86,14 +89,14 @@ export async function completeOnboarding(
     fixedRows.push({
       title: 'Energia elétrica',
       amount: answers.electricityAmount,
-      due_day: ONBOARDING_DUE_DAY_ELECTRICITY,
+      due_day: Math.min(31, Math.max(1, answers.electricityDueDay || ONBOARDING_DUE_DAY_ELECTRICITY)),
       category: 'Casa',
       is_active: true,
     });
   }
 
   if (fixedRows.length > 0) {
-    const { error: fixedError } = await supabase.from('fixed_expenses').insert(
+    const { error: fixedError } = await neon.from('fixed_expenses').insert(
       fixedRows.map((row) => ({
         user_id: userId,
         ...row,
@@ -117,7 +120,7 @@ export async function completeOnboarding(
   }
 
   if (budgetRows.length > 0) {
-    const { error: budgetError } = await supabase.from('budgets').insert(
+    const { error: budgetError } = await neon.from('budgets').insert(
       budgetRows.map((b) => ({
         user_id: userId,
         category: b.category,

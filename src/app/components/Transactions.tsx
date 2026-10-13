@@ -1,4 +1,10 @@
+import { downloadFile } from '@/lib/files';
+import { MonthlyPlan } from './MonthlyPlan';
+import { neon } from '@/lib/neon';
 import React, { useMemo, useState } from 'react';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import {
   Search,
   MoreHorizontal,
@@ -20,6 +26,7 @@ import {
   RefreshCw,
   Plus,
   Layers,
+  CalendarDays,
 } from 'lucide-react';
 import { Card, Button, cn } from './ui';
 import { EmptyState } from './patterns';
@@ -97,7 +104,10 @@ interface TransactionsProps {
 
 export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: TransactionsProps) => {
   const { user } = useAuth();
-  const { transactions, loading, deleteTransaction, updateTransaction, addTransaction } = useTransactions();
+  const { transactions, loading, deleteTransaction, updateTransaction, addTransaction, refetchTransactions } = useTransactions();
+  const [linkForecast, setLinkForecast] = useState<Transaction | null>(null);
+  const [linkTarget, setLinkTarget] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
   const { categories, addCategory } = useCategories(user?.id);
   const now = new Date();
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,6 +115,12 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<number | null>(now.getFullYear());
   const [filterMonth, setFilterMonth] = useState<number | null>(now.getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+  const selectedDateKey = selectedDay
+    ? `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}-${String(selectedDay.getDate()).padStart(2, '0')}`
+    : undefined;
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
@@ -135,8 +151,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
       list = list.filter((t) => t.date.startsWith(prefix));
     }
 
+    if (selectedDateKey) list = list.filter((t) => t.date === selectedDateKey);
     return list;
-  }, [transactions, searchTerm, filterType, filterCategory, filterYear, filterMonth]);
+  }, [transactions, searchTerm, filterType, filterCategory, filterYear, filterMonth, selectedDateKey]);
 
   const summaryYear = filterYear ?? now.getFullYear();
   const summaryMonth = filterMonth ?? now.getMonth() + 1;
@@ -186,7 +203,9 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
 
   const handleTogglePaid = async (tx: Transaction) => {
     const current = tx.is_paid !== false;
-    const { error } = await updateTransaction(tx.id, { is_paid: !current });
+    const today = new Date();
+    const actualDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const { error } = await updateTransaction(tx.id, { is_paid: !current, is_ignored: tx.is_ignored ?? false, settlement_status: tx.is_ignored ? 'ignored' : current ? 'pending' : 'settled', effective_date: current ? null : actualDate });
     if (error) toast.error(error.message);
     else
       toast.success(
@@ -223,6 +242,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
   };
 
   const hasActiveFilters =
+    selectedDay !== undefined ||
     searchTerm.trim() !== '' ||
     filterType !== 'all' ||
     filterCategory !== 'all' ||
@@ -230,6 +250,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
     filterMonth !== now.getMonth() + 1;
 
   const clearFilters = () => {
+    setSelectedDay(undefined);
     setSearchTerm('');
     setFilterType('all');
     setFilterCategory('all');
@@ -238,12 +259,14 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
   };
 
   const handlePrevMonth = () => {
+    setSelectedDay(undefined);
     if (filterYear === null || filterMonth === null) return;
     if (filterMonth === 1) { setFilterYear(filterYear - 1); setFilterMonth(12); }
     else setFilterMonth(filterMonth - 1);
   };
 
   const handleNextMonth = () => {
+    setSelectedDay(undefined);
     if (filterYear === null || filterMonth === null) return;
     if (filterMonth === 12) { setFilterYear(filterYear + 1); setFilterMonth(1); }
     else setFilterMonth(filterMonth + 1);
@@ -433,11 +456,47 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="min-w-[9.5rem] text-center text-sm font-semibold text-primary select-none px-2">
-            {filterYear !== null && filterMonth !== null
-              ? `${MONTH_NAMES[filterMonth - 1]} ${filterYear}`
-              : 'Todo período'}
-          </span>
+          <Popover open={calendarOpen} onOpenChange={(open) => {
+            if (open) setCalendarMonth(new Date(summaryYear, summaryMonth - 1, 1));
+            setCalendarOpen(open);
+          }}>
+            <PopoverTrigger asChild>
+              <button type="button" aria-label="Selecionar mês ou dia" className="min-w-[9.5rem] flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                <CalendarDays size={16} aria-hidden="true" />
+                {selectedDay
+                  ? selectedDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : `${MONTH_NAMES[summaryMonth - 1]} ${summaryYear}`}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] rounded-2xl border-border bg-card p-2 shadow-xl" align="center" sideOffset={10}>
+              <div className="px-3 pt-2 pb-1">
+                <p className="text-sm font-semibold">Selecione um dia</p>
+                <p className="text-xs text-muted-foreground mt-1">Filtre os lançamentos pela data.</p>
+              </div>
+              <Calendar
+                mode="single"
+                locale={ptBR}
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                selected={selectedDay}
+                onSelect={(date) => {
+                  setSelectedDay(date);
+                  if (date) { setFilterYear(date.getFullYear()); setFilterMonth(date.getMonth() + 1); }
+                  setCalendarOpen(false);
+                }}
+                initialFocus
+                classNames={{ day: 'size-9 rounded-lg p-0 text-sm hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary', head_cell: 'text-muted-foreground w-9 font-normal text-xs', day_today: 'bg-primary/10 text-primary font-semibold', day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground', caption_label: 'text-sm font-semibold capitalize' }}
+              />
+              <div className="border-t border-border p-2">
+                <button type="button" className="w-full rounded-xl py-2 text-sm font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => {
+                  setSelectedDay(undefined);
+                  setFilterYear(calendarMonth.getFullYear());
+                  setFilterMonth(calendarMonth.getMonth() + 1);
+                  setCalendarOpen(false);
+                }}>Ver mês inteiro</button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <button
             type="button"
             onClick={handleNextMonth}
@@ -449,6 +508,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
         </div>
       </div>
 
+      <MonthlyPlan month={`${summaryYear}-${String(summaryMonth).padStart(2,'0')}`} />
       {/* Busca + filtros da tabela */}
       <Card className="p-4 space-y-4 rounded-2xl" data-tour="fluxia-tx-filters">
         <div className="relative w-full" data-tour="fluxia-tx-search">
@@ -583,10 +643,10 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
                               {formatTransactionTitleWithParcel(tx, parcelLabelMap)}
                             </span>
                             {tx.attachment_url ? (
-                              <Paperclip
+                              <button type="button" aria-label="Baixar anexo" onClick={() => { void downloadFile(tx.attachment_url!).catch(e => toast.error(e.message)); }}><Paperclip
                                 className="size-3.5 shrink-0 text-primary opacity-80"
                                 aria-label="Com anexo"
-                              />
+                              /></button>
                             ) : null}
                           </div>
                         </td>
@@ -643,6 +703,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="min-w-[160px]">
+                                {tx.planning_item_id && isPending && <DropdownMenuItem onClick={() => { setLinkForecast(tx); setLinkTarget(''); }}>Vincular lançamento existente</DropdownMenuItem>}
                                 <DropdownMenuItem onClick={() => handleDuplicate(tx)} className="gap-2">
                                   <Copy size={16} />
                                   Duplicar
@@ -669,7 +730,7 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
         ) : (
           <EmptyState
             icon={<Inbox size={28} />}
-            title={emptyStates.transactions.title}
+            title={selectedDay ? 'Nenhuma transação neste dia' : emptyStates.transactions.title}
             description={transactions.length === 0 ? emptyStates.transactions.description : emptyStates.transactions.filterEmpty}
             primaryAction={onGoToImport ? { label: emptyStates.transactions.primaryCta, onClick: onGoToImport } : undefined}
             secondaryAction={onAddTransaction ? { label: emptyStates.transactions.secondaryCta, onClick: onAddTransaction } : undefined}
@@ -678,6 +739,18 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
         )}
       </div>
 
+      <Dialog open={!!linkForecast} onOpenChange={(open)=>{if(!open && !linkBusy)setLinkForecast(null);}}>
+        <DialogContent className="rounded-2xl border-border bg-card">
+          <DialogHeader><DialogTitle>Vincular lançamento existente</DialogTitle><DialogDescription>A previsão de {linkForecast?.title} será substituída pelo lançamento escolhido. O valor e o status real desse lançamento serão preservados.</DialogDescription></DialogHeader>
+          <Select value={linkTarget} onValueChange={setLinkTarget}><SelectTrigger><SelectValue placeholder="Escolha o lançamento já registrado" /></SelectTrigger><SelectContent>{transactions.filter(t=>linkForecast && !t.planning_item_id && !t.is_ignored && t.settlement_status !== 'ignored' && Math.sign(t.amount)===Math.sign(linkForecast.amount) && (t.competency_date||t.date).slice(0,7)===(linkForecast.competency_date||linkForecast.date).slice(0,7)).map(t=><SelectItem key={t.id} value={t.id}>{t.title} · {formatCurrencyBRL(Math.abs(t.amount))} · {formatTableDate(t.date)}</SelectItem>)}</SelectContent></Select>
+          <DialogFooter><Button variant="ghost" disabled={linkBusy} onClick={()=>setLinkForecast(null)}>Cancelar</Button><Button disabled={!linkTarget} loading={linkBusy} onClick={async()=>{
+            if(!linkForecast?.planning_item_id)return;
+            setLinkBusy(true);
+            try { const result=await neon.rpc('link_planned_transaction',{plan_id:linkForecast.planning_item_id,existing_id:linkTarget});if(result.error)throw new Error(result.error.message);await refetchTransactions();setLinkForecast(null);toast.success('Lançamento vinculado. Previsão duplicada removida.'); }
+            catch(e){toast.error(e instanceof Error?e.message:'Não foi possível vincular.');}finally{setLinkBusy(false);}
+          }}>Vincular</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       <TransactionDrawer
         key={editTx?.id ?? 'closed'}
         isOpen={editTx !== null}

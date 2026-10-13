@@ -1,5 +1,6 @@
+import { subscribeData } from '@/lib/data-sync';
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { FinancialProfile } from '@/types/database';
 
 export function useFinancialProfile(userId: string | undefined) {
@@ -12,7 +13,7 @@ export function useFinancialProfile(userId: string | undefined) {
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('financial_profile')
       .select('*')
       .eq('id', userId)
@@ -32,21 +33,12 @@ export function useFinancialProfile(userId: string | undefined) {
     setLoading(true);
     void fetchProfile();
 
-    const channel = supabase
-      .channel('financial_profile-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_profile', filter: `id=eq.${userId}` }, () => {
-        fetchProfile();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeData('financial_profile', fetchProfile);
   }, [userId, fetchProfile]);
 
   const upsertProfile = async (data: { monthly_income?: number; pay_day?: number }) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { error } = await supabase.from('financial_profile').upsert(
+    const { error } = await neon.from('financial_profile').upsert(
       { id: userId, ...data, updated_at: new Date().toISOString() },
       { onConflict: 'id' }
     );

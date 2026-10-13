@@ -1,3 +1,4 @@
+import { subscribeData } from '@/lib/data-sync';
 import {
   createContext,
   useCallback,
@@ -7,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { Transaction } from '@/types/database';
 import {
   toTransactionInsertRow,
@@ -40,7 +41,7 @@ function useTransactionsState(userId: string): TransactionsContextValue {
   const [loading, setLoading] = useState(true);
 
   const fetchTransactions = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
@@ -53,26 +54,13 @@ function useTransactionsState(userId: string): TransactionsContextValue {
     setLoading(true);
     void fetchTransactions();
 
-    const channel = supabase
-      .channel(`transactions-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` },
-        () => {
-          void fetchTransactions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeData('transactions', fetchTransactions);
   }, [userId, fetchTransactions]);
 
   const addTransaction = useCallback(
     async (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => {
       const row = toTransactionInsertRow(userId, tx);
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('transactions')
         .insert(row)
         .select('id')
@@ -90,7 +78,7 @@ function useTransactionsState(userId: string): TransactionsContextValue {
     async (txs: Omit<Transaction, 'id' | 'user_id' | 'created_at'>[]) => {
       if (txs.length === 0) return { error: null, ids: [] as string[] };
       const rows = toTransactionInsertRows(userId, txs);
-      const { data, error } = await supabase.from('transactions').insert(rows).select('id');
+      const { data, error } = await neon.from('transactions').insert(rows).select('id');
       if (!error) await fetchTransactions();
       return {
         error: error ? new Error(error.message) : null,
@@ -102,7 +90,7 @@ function useTransactionsState(userId: string): TransactionsContextValue {
 
   const fetchByDateRange = useCallback(
     async (minDate: string, maxDate: string) => {
-      const { data } = await supabase
+      const { data } = await neon
         .from('transactions')
         .select('date, amount, title')
         .eq('user_id', userId)
@@ -116,7 +104,7 @@ function useTransactionsState(userId: string): TransactionsContextValue {
   const updateTransaction = useCallback(
     async (id: string, tx: Partial<Transaction>) => {
       const patch = toTransactionUpdatePatch(tx);
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('transactions')
         .update(patch)
         .eq('id', id)
@@ -138,7 +126,7 @@ function useTransactionsState(userId: string): TransactionsContextValue {
 
   const deleteTransaction = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await neon.from('transactions').delete().eq('id', id).eq('user_id', userId);
       if (!error) await fetchTransactions();
       return { error: error ? new Error(error.message) : null };
     },

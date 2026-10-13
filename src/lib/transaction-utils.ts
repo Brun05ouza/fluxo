@@ -1,4 +1,5 @@
 import type { Transaction, Budget } from '@/types/database';
+import { isSettled, isBudgetExpense } from './financial-status';
 
 /** Lançamentos cujo `date` cai no mês indicado (ano + mês 1–12). Ignora outros filtros de UI. */
 export function filterTransactionsByMonth(
@@ -26,24 +27,24 @@ export function filterTransactionsThroughMonthEnd(
   month1to12: number
 ): Transaction[] {
   const end = endOfMonthDateString(year, month1to12);
-  return transactions.filter((t) => t.date <= end);
+  return transactions.filter((t) => (isSettled(t) ? (t.effective_date || t.date) : t.date) <= end);
 }
 
 export function getIncomeTotal(transactions: Transaction[]): number {
-  return transactions.filter((t) => t.amount > 0).reduce((sum, t) => sum + Number(t.amount), 0);
+  return transactions.filter((t) => t.amount > 0 && isSettled(t) && !['transfer', 'adjustment'].includes(t.transaction_kind ?? 'income')).reduce((sum, t) => sum + Number(t.amount), 0);
 }
 
 export function getExpenseTotal(transactions: Transaction[]): number {
-  return transactions.filter((t) => t.amount < 0).reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+  return transactions.filter((t) => isBudgetExpense(t) && isSettled(t)).reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
 }
 
 export function getBalance(transactions: Transaction[]): number {
-  return transactions.reduce((sum, t) => sum + Number(t.amount), 0);
+  return getIncomeTotal(transactions) - getExpenseTotal(transactions);
 }
 
 export function getSpentByCategory(transactions: Transaction[]): Record<string, number> {
   return transactions
-    .filter((t) => t.amount < 0)
+    .filter((t) => isBudgetExpense(t) && isSettled(t))
     .reduce((acc, t) => {
       acc[t.category] = (acc[t.category] || 0) + Math.abs(Number(t.amount));
       return acc;

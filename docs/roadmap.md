@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Roadmap — Fluxo
 
 ## Fase 1 — Forecast + Alertas ✅ (concluída)

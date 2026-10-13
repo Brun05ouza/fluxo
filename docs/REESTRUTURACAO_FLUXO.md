@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Reestruturação Fluxo — Modelo mental (referência Mobills)
 
 Resumo do que foi implementado e do que ficou para depois.

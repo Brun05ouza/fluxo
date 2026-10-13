@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Zap, BarChart3, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
+import { ShieldCheck, Zap, BarChart3, User, Eye, EyeOff, ArrowRight, Chrome } from 'lucide-react';
 import { Button } from './ui';
 import { FluxoBrand } from './FluxoBrand';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,8 @@ import {
   unmaskCpf,
 } from '@/lib/validation';
 import { mapAuthError } from '@/lib/authErrors';
+import { AuthCodeForm } from './AuthCodeForm';
+import { neon } from '@/lib/neon';
 
 type AuthMode = 'login' | 'signup' | 'forgot';
 
@@ -24,12 +26,14 @@ const loginColors = {
 };
 
 export const Login = () => {
-  const { signIn, signInWithGoogle, signUp, resetPassword } = useAuth();
+  const { signIn, signInWithGoogle, signUp, resetPassword, error: sessionError } = useAuth();
+  const [codePurpose, setCodePurpose] = useState<'verify' | 'reset' | null>(null);
   const [mode, setMode] = useState<AuthMode>('login');
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +68,7 @@ export const Login = () => {
       if (mode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {
+          if (/email.*(not verified|not confirmed)/i.test(error.message)) { setCodePurpose('verify'); return; }
           setError(mapAuthError(error));
           return;
         }
@@ -96,8 +101,16 @@ export const Login = () => {
           }
           return;
         }
-        toast.success('Conta criada! Verifique seu e-mail para confirmar.');
-        setMode('login');
+        const currentSession = await neon.auth.getSession();
+        if (!currentSession.data?.user) {
+          const verification = await neon.auth.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+          if (verification.error) { setError(verification.error.message || 'Não foi possível enviar o código.'); return; }
+          toast.success('Conta criada! Confira o código no seu e-mail.');
+          setCodePurpose('verify');
+        } else {
+          toast.success('Conta criada!');
+          setMode('login');
+        }
         setFullName('');
         setCpf('');
       } else {
@@ -106,8 +119,7 @@ export const Login = () => {
           setError(mapAuthError(error));
           return;
         }
-        toast.success('E-mail de redefinição enviado!');
-        setMode('login');
+        setCodePurpose('reset');
       }
     } finally {
       setLoading(false);
@@ -115,6 +127,7 @@ export const Login = () => {
   };
 
   const handleModeChange = (newMode: AuthMode) => {
+    setShowPassword(false);
     setMode(newMode);
     setError(null);
     if (newMode === 'signup') {
@@ -130,6 +143,8 @@ export const Login = () => {
     ) : (
       <span className="text-[#888]" style={{ fontSize: 14 }}>✕</span>
     );
+
+  if (codePurpose) return <AuthCodeForm email={email} purpose={codePurpose} onBack={() => { setCodePurpose(null); setMode('login'); setPassword(''); }} />;
 
   return (
     <div
@@ -233,7 +248,7 @@ export const Login = () => {
             <p className="text-sm" style={{ color: loginColors.muted }}>
               {mode === 'login' && 'Entre na sua conta para acessar o terminal.'}
               {mode === 'signup' && 'Preencha os dados para criar sua conta.'}
-              {mode === 'forgot' && 'Informe seu e-mail para receber o link de redefinição.'}
+              {mode === 'forgot' && 'Informe seu e-mail para receber um código de redefinição.'}
             </p>
           </div>
 
@@ -306,7 +321,7 @@ export const Login = () => {
                   style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
                   required
                 />
-                <Mail size={20} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: loginColors.muted }} />
+                <User size={20} aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: loginColors.muted }} />
               </div>
             </div>
             {mode !== 'forgot' && (
@@ -328,7 +343,7 @@ export const Login = () => {
                   <div className="relative">
                     <input
                       id="password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       placeholder={mode === 'signup' ? 'Mín. 8 caracteres' : '••••••••'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -336,7 +351,17 @@ export const Login = () => {
                       style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
                       required
                     />
-                    <Lock size={20} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: loginColors.muted }} />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                      aria-pressed={showPassword}
+                      aria-controls="password"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-md hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]"
+                      style={{ color: loginColors.muted }}
+                    >
+                      {showPassword ? <Eye size={20} aria-hidden="true" /> : <EyeOff size={20} aria-hidden="true" />}
+                    </button>
                   </div>
                 </div>
                 {mode === 'signup' && (
@@ -373,8 +398,8 @@ export const Login = () => {
                 )}
               </>
             )}
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
+            {(error || sessionError) && (
+              <p role="alert" className="text-sm text-red-400">{error || sessionError}</p>
             )}
             <button
               type="submit"
@@ -386,12 +411,13 @@ export const Login = () => {
                 <span className="inline-block w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>{mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta' : 'Enviar link'}</span>
+                  <span>{mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta' : 'Enviar código'}</span>
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
           </form>
+          {mode === 'login' && <p className="text-sm text-center" style={{ color: loginColors.muted }}>Atualizamos o Fluxo! Se você já tinha uma conta, <button type="button" className="text-white underline underline-offset-4" onClick={() => handleModeChange('forgot')}>Recupere seu acesso</button> para definir uma nova senha e continuar. Seus dados estão preservados.</p>}
 
           <p className="text-center text-sm" style={{ color: loginColors.muted }}>
             {mode === 'login' && (

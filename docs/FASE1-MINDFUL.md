@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # FASE 1 — Mindful Finance (concluída)
 
 ## Alterações no banco
@@ -7,7 +9,7 @@
 - Valores: `ESSENTIAL`, `OPTIONAL`, `EMOTIONAL`
 - Índice parcial: `idx_transactions_spending_type` (WHERE spending_type IS NOT NULL)
 
-**Executar no SQL Editor do Supabase** antes de testar.
+**Executar no SQL Editor do Neon (schema atual em neon/migrations)** antes de testar.
 
 ---
 
@@ -36,7 +38,7 @@
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `supabase/migrations/004_spending_type.sql` | Migration incremental |
+| `neon/migrations/004_spending_type.sql` | Migration incremental |
 | `src/types/database.ts` | SpendingType, SPENDING_TYPES, Transaction.spending_type |
 | `src/app/components/TransactionDrawer.tsx` | Seletor de tipo de gasto |
 | `src/lib/mindful-utils.ts` | Distribuição, evolução, médias |

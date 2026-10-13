@@ -80,7 +80,7 @@ export async function runImportPipeline(input: PipelineInput): Promise<PipelineR
   return { rows };
 }
 
-/** DECIMAL(12,2): máx 10 dígitos antes do decimal. Evita overflow no Supabase. */
+/** DECIMAL(12,2): máx 10 dígitos antes do decimal. Evita overflow no Neon. */
 const MAX_AMOUNT = 9999999999.99;
 const MIN_AMOUNT = -9999999999.99;
 

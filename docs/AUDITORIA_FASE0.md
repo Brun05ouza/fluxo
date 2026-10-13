@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # FASE 0 — Auditoria Fluxo
 
 ## 1. Rotas/Telas Existentes
@@ -17,13 +19,13 @@
 
 ## 2. Modelo de Dados Atual
 
-### Tabelas Supabase
+### Tabelas Neon
 
 | Tabela             | Campos principais                                      |
 |--------------------|--------------------------------------------------------|
 | `transactions`     | id, user_id, title, description, category, amount, date, payment_method, tags, is_recurring |
 | `budgets`          | id, user_id, category, limit_amount                    |
-| `users`            | id, nome, cpf, email (espelho auth.users)              |
+| `users`            | id, nome, cpf, email (espelho neon_auth.user)              |
 | `financial_profile`| id, monthly_income, pay_day                            |
 | `fixed_expenses`   | id, user_id, title, amount, due_day, category, is_active |
 

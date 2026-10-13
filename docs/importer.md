@@ -1,3 +1,5 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Importação de Extrato — Fluxo
 
 ## Rotas
@@ -42,7 +44,7 @@ Data;Histórico;Valor
 
 - Compara: data + valor + descrição normalizada
 - Normalização: uppercase, remove números longos, caracteres especiais
-- Uma query por range (minDate..maxDate) no Supabase
+- Uma query por range (minDate..maxDate) no Neon
 - Duplicadas marcadas e por padrão não importadas (toggle disponível)
 
 ## Categorização

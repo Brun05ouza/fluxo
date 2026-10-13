@@ -1,4 +1,5 @@
 import type { Transaction, Budget } from '@/types/database';
+import { isBudgetExpense, isSettled } from './financial-status';
 
 export type RiskLevel = 'OK' | 'WARNING' | 'DANGER';
 
@@ -45,7 +46,7 @@ function getDaysInMonth(year: number, month: number): number {
 function getExpensesForMonth(transactions: Transaction[], year: number, month: number): Transaction[] {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   return transactions.filter(
-    (t) => t.amount < 0 && t.date.startsWith(prefix)
+    (t) => isBudgetExpense(t) && isSettled(t) && t.date.startsWith(prefix)
   );
 }
 
@@ -86,12 +87,21 @@ export function computeForecast(
   const dayOfMonth = isCurrentMonth ? today.getDate() : 1;
   const daysInMonth = getDaysInMonth(year, monthNum);
   const daysRemaining = Math.max(0, daysInMonth - dayOfMonth);
+  const period = `${year}-${String(monthNum).padStart(2, '0')}`;
+  const pendingByCategory: Record<string, number> = {};
+  const fixedPaidByCategory: Record<string, number> = {};
+  for (const tx of transactions.filter(t=>t.date.startsWith(period) && isBudgetExpense(t))) {
+    if (!isSettled(tx)) pendingByCategory[tx.category] = (pendingByCategory[tx.category] || 0) + Math.abs(Number(tx.amount));
+    else if (tx.planning_item_id) fixedPaidByCategory[tx.category] = (fixedPaidByCategory[tx.category] || 0) + Math.abs(Number(tx.amount));
+  }
+  const pendingTotal = Object.values(pendingByCategory).reduce((a,b)=>a+b,0);
+  const fixedPaidTotal = Object.values(fixedPaidByCategory).reduce((a,b)=>a+b,0);
 
   const spentByCategory = getSpentByCategoryForMonth(transactions, year, monthNum);
   const totalSpent = Object.values(spentByCategory).reduce((a, b) => a + b, 0);
 
-  const dailyAvg = dayOfMonth > 0 ? totalSpent / dayOfMonth : 0;
-  const forecastEndMonth = dailyAvg * daysInMonth;
+  const dailyAvg = dayOfMonth > 0 ? (totalSpent - fixedPaidTotal) / dayOfMonth : 0;
+  const forecastEndMonth = dailyAvg * daysInMonth + fixedPaidTotal + pendingTotal;
 
   const totalBudgeted = budgets.reduce((s, b) => s + Number(b.limit_amount), 0);
 
@@ -101,16 +111,16 @@ export function computeForecast(
     const percentUsed = limit > 0 ? (spent / limit) * 100 : 0;
     const riskLevel = getRiskLevel(percentUsed);
 
-    const remaining = Math.max(0, limit - spent);
+    const remaining = Math.max(0, limit - spent - (pendingByCategory[b.category] || 0));
     const suggestedDailyLimit =
       daysRemaining > 0 ? remaining / daysRemaining : 0;
 
     const categoryDailyAvg =
       dayOfMonth > 0 && spentByCategory[b.category]
-        ? spent / dayOfMonth
+        ? (spent - (fixedPaidByCategory[b.category] || 0)) / dayOfMonth
         : 0;
     const categoryForecastEnd =
-      categoryDailyAvg * daysInMonth;
+      categoryDailyAvg * daysInMonth + (fixedPaidByCategory[b.category] || 0) + (pendingByCategory[b.category] || 0);
 
     const daysUntilOverflow =
       limit > 0 && spent < limit && categoryDailyAvg > 0
@@ -133,7 +143,7 @@ export function computeForecast(
   const overallPercent =
     totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
   const overallRisk = getRiskLevel(overallPercent);
-  const budgetRemaining = Math.max(0, totalBudgeted - totalSpent);
+  const budgetRemaining = Math.max(0, totalBudgeted - totalSpent - pendingTotal);
   const suggestedDailyLimit =
     daysRemaining > 0 ? budgetRemaining / daysRemaining : 0;
 

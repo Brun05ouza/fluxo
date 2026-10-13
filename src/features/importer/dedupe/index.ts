@@ -26,10 +26,10 @@ export interface ExistingTx {
  * Marca transações que podem ser duplicadas.
  * Considera: mesma data, mesmo valor, descrição similar.
  */
-export function markDuplicates(
-  normalized: NormalizedTxn[],
+export function markDuplicates<T extends NormalizedTxn>(
+  normalized: T[],
   existing: ExistingTx[] = []
-): (NormalizedTxn & { isDuplicate: boolean })[] {
+): (T & { isDuplicate: boolean })[] {
   const existingSet = new Set(
     existing.map((e) => `${e.date}|${e.amount}|${normalizeForCompare(e.title)}`)
   );

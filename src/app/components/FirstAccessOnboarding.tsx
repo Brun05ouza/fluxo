@@ -21,7 +21,7 @@ const loginColors = {
 const COPY = {
   welcomeTitle: 'Bem-vindo ao Fluxo',
   welcomeSubtitle: 'Vamos configurar seu painel em poucos passos.',
-  mainIncome: 'Qual é a sua renda mensal principal (salário ou principal fonte)?',
+  mainIncome: 'Qual é a sua renda mensal líquida (o valor que você recebe)?',
   extraYn: 'Além disso, você tem outra renda fixa?',
   extraDetail: 'De onde vem essa renda e qual o valor mensal?',
   extraLabelPh: 'Ex.: trabalho autônomo, pensão',
@@ -93,6 +93,9 @@ export const FirstAccessOnboarding = ({
 }) => {
   const [phase, setPhase] = useState<Phase>('main_income');
   const [mainIncomeRaw, setMainIncomeRaw] = useState('');
+  const [payDay, setPayDay] = useState(1);
+  const [rentDueDay, setRentDueDay] = useState(5);
+  const [electricityDueDay, setElectricityDueDay] = useState(10);
   const [hasExtraIncome, setHasExtraIncome] = useState<boolean | null>(null);
   const [extraLabel, setExtraLabel] = useState('');
   const [extraAmountRaw, setExtraAmountRaw] = useState('');
@@ -110,6 +113,7 @@ export const FirstAccessOnboarding = ({
   const answers = useMemo((): OnboardingAnswers => {
     return {
       mainIncome: parseMoneyBR(mainIncomeRaw),
+      payDay, rentDueDay, electricityDueDay,
       hasExtraIncome: hasExtraIncome === true,
       extraLabel,
       extraAmount: parseMoneyBR(extraAmountRaw),
@@ -124,6 +128,7 @@ export const FirstAccessOnboarding = ({
     };
   }, [
     mainIncomeRaw,
+    payDay, rentDueDay, electricityDueDay,
     hasExtraIncome,
     extraLabel,
     extraAmountRaw,
@@ -357,6 +362,7 @@ export const FirstAccessOnboarding = ({
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
           />
+          <label className="flex flex-col gap-2 text-sm">Dia do recebimento<input type="number" min={1} max={31} value={payDay} onChange={e=>setPayDay(Math.min(31,Math.max(1,Number(e.target.value)||1)))} className={inputClass} style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }} /></label>
         </div>
       );
     }
@@ -416,6 +422,7 @@ export const FirstAccessOnboarding = ({
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
           />
+          <label className="flex flex-col gap-2 text-sm">Dia do vencimento<input type="number" min={1} max={31} value={rentDueDay} onChange={e=>setRentDueDay(Math.min(31,Math.max(1,Number(e.target.value)||1)))} className={inputClass} style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }} /></label>
         </div>
       );
     }
@@ -440,6 +447,7 @@ export const FirstAccessOnboarding = ({
             style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
             autoFocus
           />
+          <label className="flex flex-col gap-2 text-sm">Dia do vencimento<input type="number" min={1} max={31} value={electricityDueDay} onChange={e=>setElectricityDueDay(Math.min(31,Math.max(1,Number(e.target.value)||1)))} className={inputClass} style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }} /></label>
         </div>
       );
     }

@@ -1,7 +1,9 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Dashboard — inventário de dados e fontes
 
-Documentação de **tudo** que o componente `Dashboard` consome, calcula, exibe ou persiste.  
-**Arquivo do componente:** `src/app/components/Dashboard.tsx`  
+Documentação de **tudo** que o componente `Dashboard` consome, calcula, exibe ou persiste.
+**Arquivo do componente:** `src/app/components/Dashboard.tsx`
 
 O conteúdo do Dashboard é renderizado **dentro** do `AppLayout`, na área rolável:
 
@@ -13,7 +15,7 @@ O conteúdo do Dashboard é renderizado **dentro** do `AppLayout`, na área rol�
 
 | Hook | Origem | O que traz | Uso no Dashboard |
 |------|--------|------------|------------------|
-| `useAuth()` | `@/contexts/AuthContext` | `user` (sessão Supabase) | `user?.id` para score, missões, streak |
+| `useAuth()` | `@/contexts/AuthContext` | `user` (sessão Neon) | `user?.id` para score, missões, streak |
 | `useTransactions()` | `@/hooks/useTransactions` | `transactions`, `loading` | Lista completa; filtrada por mês na UI |
 | `useBudgets(user?.id)` | `@/hooks/useBudgets` | `budgets` | Score, forecast, missões, sugestões, KPIs indiretos |
 | `useFixedExpenses(user?.id)` | `@/hooks/useFixedExpenses` | `expenses` (contas fixas) | Card “Contas fixas do mês” |
@@ -21,7 +23,7 @@ O conteúdo do Dashboard é renderizado **dentro** do `AppLayout`, na área rol�
 | `useForecast(monthKey, transactions, budgets)` | `@/hooks/useForecast` | resultado de `computeForecast` | Alerta “Atenção ao orçamento” |
 | `useSearchParams()` | `react-router-dom` | query string | Banner pós-importação |
 
-**Backend implícito:** `transactions` e `budgets` vêm do **Supabase** (via hooks). Perfil e contas fixas idem.
+**Backend implícito:** `transactions` e `budgets` vêm do **Neon** (via hooks). Perfil e contas fixas idem.
 
 ---
 
@@ -60,7 +62,7 @@ Navegação: botões anterior/próximo mês (`prevMonth` / `nextMonth`).
 | `latestTx` | ordenação manual | Até **5** transações do mês, `date` desc |
 | `withCategoryCount` | filtro manual | Despesas (`amount < 0`) com `category` definida e ≠ `'Outros'` |
 
-**Arquivo:** `src/lib/transaction-utils.ts` (totais e pizza).  
+**Arquivo:** `src/lib/transaction-utils.ts` (totais e pizza).
 **Saldo em caixa:** `src/features/finance/domain/balance-engine.ts` (`getEffectiveCashBalance`).
 
 ---
@@ -68,7 +70,7 @@ Navegação: botões anterior/próximo mês (`prevMonth` / `nextMonth`).
 ## 5. Forecast e alerta de orçamento
 
 - **`forecast`** = `useForecast` → `computeForecast(month, transactions, budgets)` em `src/lib/forecast.ts`.
-- **Card “Atenção ao orçamento”** aparece se existe categoria em `forecast.byCategory` com  
+- **Card “Atenção ao orçamento”** aparece se existe categoria em `forecast.byCategory` com
   `daysUntilOverflow !== null` **e** `daysUntilOverflow <= daysRemaining`.
 
 Usa **todas** as transações + orçamentos para o cálculo do mês (não só `txForMonth` no hook — o mês é passado como string `YYYY-MM`).
@@ -94,7 +96,7 @@ Usa **todas** as transações + orçamentos para o cálculo do mês (não só `t
 - `fluxo_missions_${userId}` — estado das missões por mês.
 - `fluxo_streak_${userId}` — sequência de meses com bom score (ver implementação em `journey.ts`).
 
-**Missões padrão (IDs):** `import_extrato`, `categorizar_transacoes`, `criar_orcamento`, `visualizar_insight`.  
+**Missões padrão (IDs):** `import_extrato`, `categorizar_transacoes`, `criar_orcamento`, `visualizar_insight`.
 Regras resumidas: import = há transações no app; categorizar = ≥5 lançamentos do mês com categoria ≠ Outros; orçamento = `budgets.length > 0`; insight = flag opcional `hasViewedReportsThisMonth` (não passada pelo Dashboard → depende de estado salvo).
 
 ---

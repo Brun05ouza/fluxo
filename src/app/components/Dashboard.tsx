@@ -1,3 +1,4 @@
+import { MonthlyPlan } from './MonthlyPlan';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -553,6 +554,7 @@ export const Dashboard = ({
         </div>
       </header>
 
+      <MonthlyPlan month={currentMonthKey} />
       {!hasMonthData ? (
         <>
           <EmptyState

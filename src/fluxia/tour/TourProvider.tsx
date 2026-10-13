@@ -269,7 +269,7 @@ function clampTooltipPosition(
     (placement === 'left' && space.left < cardW + pad) ||
     (placement === 'right' && space.right < cardW + pad)
   ) {
-    const ranked = (['bottom', 'top', 'right', 'left'] as const).sort(
+    const ranked = ([...(['bottom', 'top', 'right', 'left'] as const)]).sort(
       (a, b) => space[b] - space[a],
     );
     placement = ranked[0];

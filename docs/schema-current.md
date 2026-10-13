@@ -1,6 +1,8 @@
+> Documento histórico adaptado para Neon. Para configuração vigente, consulte README.md e neon/migrations; números de migrations e instruções de buckets anteriores são históricos.
+
 # Schema atual — Fluxo
 
-> Documentação do estado atual do banco de dados Supabase.
+> Documentação do estado atual do banco de dados Neon.
 > **Não alterar este documento** ao aplicar migrations — ele reflete o schema antes das alterações incrementais.
 
 ---
@@ -11,7 +13,7 @@
 |--------------------|----------|-----------------------------------------|
 | `transactions`     | 001      | Transações financeiras (receitas/despesas) |
 | `budgets`          | 001      | Orçamentos por categoria                |
-| `users`            | 002      | Perfil do usuário (espelho auth.users)  |
+| `users`            | 002      | Perfil do usuário (espelho neon_auth.user)  |
 | `financial_profile`| 003      | Renda mensal, dia de recebimento        |
 | `fixed_expenses`   | 003      | Contas fixas (obrigações mensais)       |
 
@@ -33,7 +35,7 @@
 | is_recurring    | BOOLEAN      | YES      | false        |
 | created_at      | TIMESTAMPTZ  | YES      | now()        |
 
-**FK:** `user_id` → `auth.users(id)` ON DELETE CASCADE
+**FK:** `user_id` → `neon_auth.user(id)` ON DELETE CASCADE
 
 **Índices:** `idx_transactions_user_id`, `idx_transactions_date`
 
@@ -66,14 +68,14 @@ A coluna `category` em `transactions`, `budgets` e `fixed_expenses` armazena ess
 | created_at| TIMESTAMPTZ | YES      | now()     |
 | updated_at| TIMESTAMPTZ | YES      | now()     |
 
-**PK/FK:** `id` → `auth.users(id)` ON DELETE CASCADE  
+**PK/FK:** `id` → `neon_auth.user(id)` ON DELETE CASCADE
 **UNIQUE:** `email`
 
 **Índices:** `idx_users_email`, `idx_users_cpf`
 
 **RLS:** `users_own_profile` — `auth.uid() = id`
 
-**Sincronização:** Trigger em `auth.users` (insert/update) → `sync_auth_user_to_users()`
+**Sincronização:** Trigger em `neon_auth.user` (insert/update) → `sync_neon_user()`
 
 ---
 
@@ -89,7 +91,7 @@ A coluna `category` em `transactions`, `budgets` e `fixed_expenses` armazena ess
 
 **UNIQUE:** `(user_id, category)`
 
-**FK:** `user_id` → `auth.users(id)` ON DELETE CASCADE
+**FK:** `user_id` → `neon_auth.user(id)` ON DELETE CASCADE
 
 **Índices:** `idx_budgets_user_id`
 
@@ -107,7 +109,7 @@ A coluna `category` em `transactions`, `budgets` e `fixed_expenses` armazena ess
 | created_at    | TIMESTAMPTZ  | YES      | now()   |
 | updated_at    | TIMESTAMPTZ  | YES      | now()   |
 
-**PK/FK:** `id` → `auth.users(id)` ON DELETE CASCADE  
+**PK/FK:** `id` → `neon_auth.user(id)` ON DELETE CASCADE
 **CHECK:** `pay_day BETWEEN 1 AND 31`
 
 **RLS:** `users_own_financial_profile` — `auth.uid() = id`
@@ -127,7 +129,7 @@ A coluna `category` em `transactions`, `budgets` e `fixed_expenses` armazena ess
 | is_active | BOOLEAN      | YES      | true         |
 | created_at| TIMESTAMPTZ  | YES      | now()        |
 
-**FK:** `user_id` → `auth.users(id)` ON DELETE CASCADE  
+**FK:** `user_id` → `neon_auth.user(id)` ON DELETE CASCADE
 **CHECK:** `due_day BETWEEN 1 AND 31`
 
 **Índices:** `idx_fixed_expenses_user_id`
@@ -142,7 +144,7 @@ A coluna `category` em `transactions`, `budgets` e `fixed_expenses` armazena ess
 |-------------|--------------------|-------------------------|
 | Transações  | `transactions`     | Tabela                  |
 | Categorias  | —                  | Constante (frontend)    |
-| Usuários    | `users`            | Tabela (+ auth.users)   |
+| Usuários    | `users`            | Tabela (+ neon_auth.user)   |
 | Orçamentos  | `budgets`          | Tabela                  |
 | Perfil      | `financial_profile`| Tabela                  |
 | Contas fixas| `fixed_expenses`   | Tabela                  |

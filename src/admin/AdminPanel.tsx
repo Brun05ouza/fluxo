@@ -35,7 +35,7 @@ function UserRow({
     <div className="flex items-center gap-4 p-4 rounded-xl border border-white/5 hover:bg-white/5 transition-colors">
       {/* Avatar */}
       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00FF94]/40 to-blue-500/40 flex items-center justify-center text-white text-sm font-bold shrink-0">
-        {user.avatar_url ? (
+        {user.avatar_url?.startsWith('https://') ? (
           <img src={user.avatar_url} alt={initials} className="w-10 h-10 rounded-full object-cover" />
         ) : (
           initials

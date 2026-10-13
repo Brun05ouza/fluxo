@@ -1,5 +1,6 @@
+import { subscribeData } from '@/lib/data-sync';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { FixedExpense } from '@/types/database';
 
 export function useFixedExpenses(userId: string | undefined) {
@@ -14,7 +15,7 @@ export function useFixedExpenses(userId: string | undefined) {
     }
 
     const fetch = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('fixed_expenses')
         .select('*')
         .eq('user_id', userId)
@@ -25,19 +26,12 @@ export function useFixedExpenses(userId: string | undefined) {
 
     fetch();
 
-    const channel = supabase
-      .channel('fixed_expenses-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixed_expenses', filter: `user_id=eq.${userId}` }, fetch)
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeData('fixed_expenses', fetch);
   }, [userId]);
 
   const addExpense = async (exp: Omit<FixedExpense, 'id' | 'user_id' | 'created_at'>) => {
     if (!userId) return { error: new Error('Não autenticado') };
-    const { error } = await supabase.from('fixed_expenses').insert({
+    const { error } = await neon.from('fixed_expenses').insert({
       ...exp,
       user_id: userId,
     });
@@ -45,7 +39,7 @@ export function useFixedExpenses(userId: string | undefined) {
   };
 
   const updateExpense = async (id: string, exp: Partial<FixedExpense>) => {
-    const { error } = await supabase.from('fixed_expenses').update(exp).eq('id', id).eq('user_id', userId);
+    const { error } = await neon.from('fixed_expenses').update(exp).eq('id', id).eq('user_id', userId);
     return { error: error ? new Error(error.message) : null };
   };
 
@@ -56,7 +50,7 @@ export function useFixedExpenses(userId: string | undefined) {
       snapshot = prev;
       return prev.filter((e) => e.id !== id);
     });
-    const { error } = await supabase.from('fixed_expenses').delete().eq('id', id).eq('user_id', userId);
+    const { error } = await neon.from('fixed_expenses').delete().eq('id', id).eq('user_id', userId);
     if (error) {
       setExpenses(snapshot);
       return { error: new Error(error.message) };

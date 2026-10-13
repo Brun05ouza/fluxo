@@ -11,7 +11,8 @@ import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useFixedExpenses } from '@/hooks/useFixedExpenses';
-import { supabase } from '@/lib/supabase';
+import { uploadFile } from '@/lib/files';
+import { useFileUrl } from '@/hooks/useFileUrl';
 import { maskCpf } from '@/lib/validation';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { toast } from 'sonner';
@@ -65,7 +66,7 @@ export const Profile = () => {
   const { expenses: fixedExpenses } = useFixedExpenses(user?.id);
 
   const email    = user?.email ?? '';
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const avatarUrl = useFileUrl(user?.user_metadata?.avatar_url);
   const cpf       = user?.user_metadata?.cpf ? maskCpf(user.user_metadata.cpf) : '—';
   const joinedAt  = user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—';
   const provider  = (user?.app_metadata?.provider as string | undefined) ?? 'email';
@@ -110,15 +111,10 @@ export const Profile = () => {
     if (file.size > 1024 * 1024) { toast.error('A imagem deve ter no máximo 1 MB.'); return; }
     setUploadingPhoto(true);
     try {
-      const ext  = file.name.split('.').pop() || 'jpg';
-      const path = `${user.id}/avatar.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error: profileError } = await updateProfile({ avatarUrl: data.publicUrl });
+      const reference = await uploadFile(user.id, file, 'avatar');
+      const { error: profileError } = await updateProfile({ avatarUrl: reference });
       if (profileError) throw profileError;
       toast.success('Foto atualizada!');
-      window.location.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao enviar foto.');
     } finally {

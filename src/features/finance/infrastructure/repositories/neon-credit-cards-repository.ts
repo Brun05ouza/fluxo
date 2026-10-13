@@ -1,11 +1,11 @@
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { CreditCard, CreditCardInvoice, CreditCardInvoiceItem } from '@/types/database';
 
 export type CreditCardInsert = Omit<CreditCard, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
-export const supabaseCreditCardsRepository = {
+export const neonCreditCardsRepository = {
   async listCards(userId: string) {
-    return supabase
+    return neon
       .from('credit_cards')
       .select('*')
       .eq('user_id', userId)
@@ -13,7 +13,7 @@ export const supabaseCreditCardsRepository = {
   },
 
   async insertCard(userId: string, row: CreditCardInsert) {
-    return supabase
+    return neon
       .from('credit_cards')
       .insert({
         user_id: userId,
@@ -33,7 +33,7 @@ export const supabaseCreditCardsRepository = {
   },
 
   async updateCard(userId: string, cardId: string, patch: Partial<CreditCardInsert>) {
-    return supabase
+    return neon
       .from('credit_cards')
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq('user_id', userId)
@@ -42,11 +42,11 @@ export const supabaseCreditCardsRepository = {
   },
 
   async deleteCard(userId: string, cardId: string) {
-    return supabase.from('credit_cards').delete().eq('user_id', userId).eq('id', cardId);
+    return neon.from('credit_cards').delete().eq('user_id', userId).eq('id', cardId);
   },
 
   async listInvoices(userId: string, cardId?: string) {
-    let query = supabase
+    let query = neon
       .from('credit_card_invoices')
       .select('*')
       .eq('user_id', userId)
@@ -56,7 +56,7 @@ export const supabaseCreditCardsRepository = {
   },
 
   async listInvoiceItems(userId: string, invoiceId: string) {
-    return supabase
+    return neon
       .from('credit_card_invoice_items')
       .select('*')
       .eq('user_id', userId)
@@ -79,7 +79,7 @@ export const supabaseCreditCardsRepository = {
           ? 'paid'
           : 'partial';
 
-    const updateInvoice = supabase
+    const updateInvoice = neon
       .from('credit_card_invoices')
       .update({
         amount_paid: nextPaid,
@@ -90,7 +90,7 @@ export const supabaseCreditCardsRepository = {
       .eq('id', input.invoice.id)
       .eq('user_id', input.userId);
 
-    const createCashTransaction = supabase.from('transactions').insert({
+    const createCashTransaction = neon.from('transactions').insert({
       user_id: input.userId,
       title: `Pagamento fatura - ${input.invoice.reference_month}`,
       description: 'Pagamento de fatura de cartao',

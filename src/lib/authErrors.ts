@@ -1,5 +1,5 @@
 /**
- * Converte erros técnicos (Supabase, rede, fetch) em mensagens claras em português.
+ * Converte erros técnicos (Neon, rede, fetch) em mensagens claras em português.
  */
 
 const SUPPORT_HINT =
@@ -32,7 +32,7 @@ export function connectionErrorMessage(): string {
 }
 
 /**
- * Mapeia erro bruto (Supabase ou rede) para texto exibido ao usuário.
+ * Mapeia erro bruto (Neon ou rede) para texto exibido ao usuário.
  */
 export function mapAuthError(error: unknown): string {
   if (error == null) {
@@ -51,7 +51,7 @@ export function mapAuthError(error: unknown): string {
 
   const lower = trimmed.toLowerCase();
 
-  // Login — credenciais inválidas (Supabase não distingue "usuário não existe" de senha errada por segurança)
+  // Login — credenciais inválidas (Neon não distingue "usuário não existe" de senha errada por segurança)
   if (
     lower.includes('invalid login credentials') ||
     lower.includes('invalid credentials') ||
@@ -98,7 +98,7 @@ export function mapAuthError(error: unknown): string {
   // Se parecer mensagem técnica em inglês, não mostrar crua
   const looksTechnical =
     lower.includes('fetch') ||
-    lower.includes('supabase') ||
+    lower.includes('neon') ||
     lower.includes('json') ||
     lower.includes('cors');
 

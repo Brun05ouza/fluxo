@@ -27,7 +27,7 @@ export interface Mission {
 export interface MonthMissions {
   month: string; // YYYY-MM
   missions: Mission[];
-  completedAt?: Record<MissionId, string>; // ISO date
+  completedAt?: Partial<Record<MissionId, string>>; // ISO date
 }
 
 function getDefaultMissions(month: string): Mission[] {

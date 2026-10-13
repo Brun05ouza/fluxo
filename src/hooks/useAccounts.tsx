@@ -1,3 +1,4 @@
+import { subscribeData } from '@/lib/data-sync';
 import {
   createContext,
   useCallback,
@@ -7,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { supabase } from '@/lib/supabase';
+import { neon } from '@/lib/neon';
 import type { Account } from '@/types/database';
 import {
   toAccountInsertRow,
@@ -33,7 +34,7 @@ function useAccountsState(userId: string): AccountsContextValue {
   const [loading, setLoading] = useState(true);
 
   const fetchAccounts = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('accounts')
       .select('*')
       .eq('user_id', userId)
@@ -46,26 +47,13 @@ function useAccountsState(userId: string): AccountsContextValue {
     setLoading(true);
     void fetchAccounts();
 
-    const channel = supabase
-      .channel(`accounts-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'accounts', filter: `user_id=eq.${userId}` },
-        () => {
-          void fetchAccounts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeData('accounts', fetchAccounts);
   }, [userId, fetchAccounts]);
 
   const addAccount = useCallback(
     async (row: AccountInsert) => {
       const body = toAccountInsertRow(userId, row);
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('accounts')
         .insert(body)
         .select('id')
@@ -82,7 +70,7 @@ function useAccountsState(userId: string): AccountsContextValue {
   const updateAccount = useCallback(
     async (id: string, patch: Partial<AccountInsert>) => {
       const body = toAccountUpdatePatch(patch);
-      const { data, error } = await supabase
+      const { data, error } = await neon
         .from('accounts')
         .update(body)
         .eq('id', id)
@@ -98,7 +86,7 @@ function useAccountsState(userId: string): AccountsContextValue {
 
   const deleteAccount = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from('accounts').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await neon.from('accounts').delete().eq('id', id).eq('user_id', userId);
       if (!error) await fetchAccounts();
       return { error: error ? new Error(error.message) : null };
     },

@@ -7,10 +7,15 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "neon:env": "node --env-file=.env.local scripts/sync-neon-env.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@neon/config": "^1.9.1",
+    "@neon/env": "^1.6.1",
+    "@neondatabase/neon-js": "^0.8.0-beta",
     "@radix-ui/react-accordion": "1.2.3",
     "@radix-ui/react-alert-dialog": "1.1.6",
     "@radix-ui/react-aspect-ratio": "1.1.2",
@@ -37,7 +42,7 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
-    "@supabase/supabase-js": "^2.95.3",
+    "better-auth": "1.6.22",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
@@ -47,7 +52,10 @@
     "lucide-react": "0.487.0",
     "motion": "12.23.24",
     "next-themes": "0.4.6",
+    "pg": "^8.16.3",
+    "react": "18.3.1",
     "react-day-picker": "8.10.1",
+    "react-dom": "18.3.1",
     "react-hook-form": "7.55.0",
     "react-resizable-panels": "2.1.7",
     "react-router-dom": "^7.13.0",
@@ -60,22 +68,13 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
+    "typescript": "^7.0.2",
     "vite": "6.3.5",
     "vitest": "^4.0.18"
-  },
-  "peerDependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
   },
   "pnpm": {
     "overrides": {

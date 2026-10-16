@@ -48,6 +48,10 @@ export const Login = () => {
         setError(msg);
         toast.error(msg);
       }
+    } catch (error) {
+      const msg = mapAuthError(error);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setGoogleLoading(false);
     }
@@ -104,7 +108,7 @@ export const Login = () => {
         const currentSession = await neon.auth.getSession();
         if (!currentSession.data?.user) {
           const verification = await neon.auth.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
-          if (verification.error) { setError(verification.error.message || 'Não foi possível enviar o código.'); return; }
+          if (verification.error) { setError(mapAuthError(verification.error)); return; }
           toast.success('Conta criada! Confira o código no seu e-mail.');
           setCodePurpose('verify');
         } else {
@@ -121,6 +125,8 @@ export const Login = () => {
         }
         setCodePurpose('reset');
       }
+    } catch (error) {
+      setError(mapAuthError(error));
     } finally {
       setLoading(false);
     }
@@ -399,7 +405,7 @@ export const Login = () => {
               </>
             )}
             {(error || sessionError) && (
-              <p role="alert" className="text-sm text-red-400">{error || sessionError}</p>
+              <p role="alert" className="text-sm text-red-400">{error || mapAuthError(sessionError)}</p>
             )}
             <button
               type="submit"

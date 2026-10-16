@@ -28,7 +28,7 @@ function isNetworkOrDnsError(message: string, error: unknown): boolean {
  * Mensagem amigável para falha de conexão com a API (DNS, offline, CORS, etc.).
  */
 export function connectionErrorMessage(): string {
-  return `Não foi possível conectar ao servidor. Verifique sua internet e as configurações do app. ${SUPPORT_HINT}`;
+  return 'Não foi possível conectar ao servidor. Confira sua internet e tente novamente. Se continuar, fale com o suporte.';
 }
 
 /**
@@ -39,7 +39,10 @@ export function mapAuthError(error: unknown): string {
     return 'Ocorreu um erro inesperado. Tente novamente.';
   }
 
-  const message = error instanceof Error ? error.message : String(error);
+  const detail = typeof error === 'object' && error !== null
+    ? error as { message?: unknown; code?: unknown; status?: unknown }
+    : null;
+  const message = detail && typeof detail.message === 'string' ? detail.message : String(error);
   const trimmed = message.trim();
   if (!trimmed) {
     return `Algo deu errado. ${SUPPORT_HINT}`;
@@ -49,18 +52,27 @@ export function mapAuthError(error: unknown): string {
     return connectionErrorMessage();
   }
 
-  const lower = trimmed.toLowerCase();
+  const lower = `${trimmed} ${detail?.code ?? ''}`.toLowerCase().replace(/_/g, ' ');
+
+  if (lower.includes('invalid origin') || lower.includes('invalid domain') || lower.includes('untrusted origin')) {
+    return 'O acesso por este endereço ainda não está liberado. Entre pelo endereço oficial do Fluxo ou avise o suporte.';
+  }
+
+  if (lower.includes('otp') || lower.includes('verification code')) {
+    if (lower.includes('expired')) return 'Este código expirou. Solicite um novo código e tente novamente.';
+    if (lower.includes('invalid') || lower.includes('not found')) return 'Código incorreto ou indisponível. Confira o e-mail ou solicite um novo código.';
+  }
 
   // Login — credenciais inválidas (Neon não distingue "usuário não existe" de senha errada por segurança)
   if (
     lower.includes('invalid login credentials') ||
     lower.includes('invalid credentials') ||
-    lower === 'invalid email or password'
+    lower.includes('invalid email or password')
   ) {
     return 'E-mail ou senha incorretos. Confira os dados ou use "Esqueci minha senha".';
   }
 
-  if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) {
+  if (lower.includes('email not confirmed') || lower.includes('email not verified')) {
     return 'Confirme seu e-mail antes de entrar. Verifique a caixa de entrada e o spam.';
   }
 
@@ -77,7 +89,7 @@ export function mapAuthError(error: unknown): string {
     return 'Informe um e-mail válido.';
   }
 
-  if (lower.includes('password') && lower.includes('least')) {
+  if (lower.includes('password') && (lower.includes('least') || lower.includes('too short'))) {
     return 'A senha não atende ao tamanho mínimo exigido.';
   }
 
@@ -106,5 +118,7 @@ export function mapAuthError(error: unknown): string {
     return `Não foi possível completar a ação. ${SUPPORT_HINT}`;
   }
 
-  return trimmed;
+  // Preserve local validation messages; unknown service errors should not leak technical details.
+  if (/[áàâãéêíóôõúç]/i.test(trimmed) || /^(Use |As senhas |Informe |Configure |Não |O acesso )/.test(trimmed)) return trimmed;
+  return 'Não foi possível concluir o acesso. Tente novamente em instantes. Se continuar, fale com o suporte.';
 }

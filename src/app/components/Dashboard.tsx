@@ -554,7 +554,7 @@ export const Dashboard = ({
         </div>
       </header>
 
-      <MonthlyPlan month={currentMonthKey} />
+      <MonthlyPlan month={currentMonthKey} compact />
       {!hasMonthData ? (
         <>
           <EmptyState

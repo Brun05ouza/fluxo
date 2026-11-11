@@ -124,7 +124,7 @@ export const ImportPreviewPage = () => {
         <EmptyState
           icon={<FileSearch size={28} />}
           title={emptyStates.importPreview.noData}
-          description="Volte à tela de importação e envie um arquivo CSV ou OFX."
+          description="Volte à tela de importação e envie um arquivo CSV."
           primaryAction={{ label: emptyStates.importPreview.backCta, onClick: () => navigate('/import') }}
         />
       </div>

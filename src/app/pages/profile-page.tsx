@@ -67,7 +67,7 @@ export const Profile = () => {
 
   const email    = user?.email ?? '';
   const avatarUrl = useFileUrl(user?.user_metadata?.avatar_url);
-  const cpf       = user?.user_metadata?.cpf ? maskCpf(user.user_metadata.cpf) : '—';
+  const cpf       = user?.user_metadata?.cpf?.trim() ? maskCpf(user.user_metadata.cpf) : '—';
   const joinedAt  = user?.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '—';
   const provider  = (user?.app_metadata?.provider as string | undefined) ?? 'email';
 

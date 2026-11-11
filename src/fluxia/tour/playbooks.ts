@@ -17,7 +17,7 @@ export const IMPORTAR_EXTRATO_PLAYBOOK: TourPlaybook = {
       id: 'dropzone',
       selector: 'fluxia-import-dropzone',
       title: 'Área de upload',
-      body: 'Arraste o CSV ou OFX para esta área, ou clique para escolher o arquivo no computador.',
+      body: 'Arraste o CSV para esta área, ou clique para escolher o arquivo no computador. Hoje só CSV é aceito.',
       placement: 'right',
     },
     {

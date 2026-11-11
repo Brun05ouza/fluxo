@@ -439,7 +439,7 @@ export const Budgets = () => {
                 <div className="p-3 rounded-lg text-sm bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
                   <p className="font-medium">No ritmo atual, você estoura em {daysUntilOverflow} dia(s).</p>
                   <p className="text-xs mt-1 text-muted-foreground">
-                    Ação recomendada: reduzir {formatCurrencyBRL(suggestedDaily)}/dia para não estourar.
+                    Para não estourar, gaste no máximo {formatCurrencyBRL(suggestedDaily)}/dia nos próximos {catForecast?.daysRemaining ?? 0} dias.
                   </p>
                 </div>
               )}

@@ -18,7 +18,7 @@ export const SPENDING_TYPES = [
 export interface UserProfile {
   id: string;
   nome: string;
-  cpf: string;
+  cpf?: string;
   email: string;
   created_at: string;
   updated_at: string;

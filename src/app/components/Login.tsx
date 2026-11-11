@@ -6,10 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
   validatePasswordStrength,
-  validateCpf,
   validateFullName,
-  maskCpf,
-  unmaskCpf,
 } from '@/lib/validation';
 import { mapAuthError } from '@/lib/authErrors';
 import { AuthCodeForm } from './AuthCodeForm';
@@ -30,7 +27,6 @@ export const Login = () => {
   const [codePurpose, setCodePurpose] = useState<'verify' | 'reset' | null>(null);
   const [mode, setMode] = useState<AuthMode>('login');
   const [fullName, setFullName] = useState('');
-  const [cpf, setCpf] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -59,10 +55,6 @@ export const Login = () => {
 
   const passwordStrength = validatePasswordStrength(password);
 
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpf(maskCpf(e.target.value));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -82,17 +74,12 @@ export const Login = () => {
           setError('Informe o nome completo (mínimo 2 palavras, sem números).');
           return;
         }
-        if (!validateCpf(cpf)) {
-          setError('CPF inválido.');
-          return;
-        }
         if (!passwordStrength.valid) {
           setError('A senha não atende aos requisitos mínimos de segurança.');
           return;
         }
         const { error } = await signUp(email, password, {
           fullName: fullName.trim(),
-          cpf: unmaskCpf(cpf),
         });
         if (error) {
           const raw = error.message?.toLowerCase() || '';
@@ -116,7 +103,6 @@ export const Login = () => {
           setMode('login');
         }
         setFullName('');
-        setCpf('');
       } else {
         const { error } = await resetPassword(email);
         if (error) {
@@ -138,7 +124,6 @@ export const Login = () => {
     setError(null);
     if (newMode === 'signup') {
       setFullName('');
-      setCpf('');
       setPassword('');
     }
   };
@@ -293,20 +278,6 @@ export const Login = () => {
                     placeholder="João da Silva"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full h-14 rounded-lg px-4 text-white placeholder-gray-600 focus:outline-none transition-all duration-200 font-mono text-sm border focus:ring-1 focus:ring-[#00FF94] focus:border-[#00FF94]"
-                    style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider transition-colors" style={{ color: loginColors.muted }} htmlFor="cpf">CPF</label>
-                  <input
-                    id="cpf"
-                    type="text"
-                    placeholder="000.000.000-00"
-                    value={cpf}
-                    onChange={handleCpfChange}
-                    maxLength={14}
                     className="w-full h-14 rounded-lg px-4 text-white placeholder-gray-600 focus:outline-none transition-all duration-200 font-mono text-sm border focus:ring-1 focus:ring-[#00FF94] focus:border-[#00FF94]"
                     style={{ background: loginColors.backgroundDark, borderColor: loginColors.borderDark }}
                     required

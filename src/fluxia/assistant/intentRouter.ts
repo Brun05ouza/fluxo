@@ -27,9 +27,35 @@ const INTENTS: IntentConfig[] = [
       /carregar (o )?extrato/i,
       /trazer (meus )?lancamentos/i,
     ],
-    text: 'Para importar seu extrato: vá em Importar no menu, arraste o arquivo CSV ou OFX na área indicada. Revise as categorias e clique em "Importar extrato" para confirmar.',
+    text: 'Para importar seu extrato: vá em Importar no menu, arraste o arquivo CSV na área indicada (hoje só CSV é aceito). Revise as categorias e clique em "Importar extrato" para confirmar.',
     hasGuide: true,
     openPage: '/import',
+  },
+  {
+    intent: 'PREPARAR_MES',
+    keywords: [
+      'preparar mes',
+      'previsao',
+      'previsoes',
+      'planejamento',
+      /preparar (o )?mes/i,
+      /planejar (o )?mes/i,
+    ],
+    text: 'Para preparar o mês: em Orçamentos ou no Painel, clique em "Preparar mês". O Fluxo cria uma previsão pendente para o salário, as rendas extras e cada conta fixa. Se clicar de novo, nada é duplicado.',
+    hasGuide: false,
+    openPage: '/budgets',
+  },
+  {
+    intent: 'VINCULAR',
+    keywords: [
+      'vincular',
+      'vinculo',
+      /ja lancei/i,
+      /(previsao|lancamento) duplicad/i,
+    ],
+    text: 'Para vincular: em Transações, abra o menu ⋯ da previsão pendente e escolha "Vincular lançamento existente". O lançamento real fica valendo e a previsão é removida.',
+    hasGuide: false,
+    openPage: '/transactions',
   },
   {
     intent: 'NOVA_TRANSACAO',
@@ -41,12 +67,15 @@ const INTENTS: IntentConfig[] = [
       'lancamento',
       'despesa',
       'receita',
+      'excluir',
+      'apagar',
+      /transac(ao|oes)/i,
       /(adicionar|nova|novo|registrar|criar) (um |uma )?(gasto|transacao|receita|despesa|lancamento)/i,
       /como (adiciono|adicionar|registro|registrar|lanço|lancar)/i,
       /quero (registrar|adicionar|lancar)/i,
       /anotar (um )?gasto/i,
     ],
-    text: 'Para adicionar um lançamento: no menu lateral, em "Nova transação", escolha Receita ou Despesa e preencha valor, descrição, data e categoria.',
+    text: 'Para adicionar um lançamento: no menu lateral, em "Nova transação", escolha Receita ou Despesa e preencha valor, descrição, data e categoria. Para editar, duplicar ou excluir, use o menu ⋯ da linha em Transações.',
     hasGuide: true,
     openPage: '/',
   },
@@ -181,7 +210,7 @@ const INTENTS: IntentConfig[] = [
     ],
     text: 'Em Contas você organiza carteiras, bancos e cartões. O saldo e o que entra na soma da tela inicial podem ser ajustados por conta.',
     hasGuide: false,
-    openPage: '/accounts',
+    openPage: '/reports',
   },
 ];
 
@@ -275,13 +304,6 @@ export function detectIntent(userInput: string): FluxiaResponse {
     );
   }
 
-  if (HELP_RE.test(trimmed) || HELP_RE.test(normalized)) {
-    return response(
-      'HELP',
-      `Posso te guiar pelo Fluxo: importar extrato, lançar gastos, orçamentos, relatórios, score e configurações.\n\n${SUGGESTIONS}`,
-    );
-  }
-
   for (const config of INTENTS) {
     if (matchKeywords(normalized, trimmed, config.keywords)) {
       return {
@@ -291,6 +313,13 @@ export function detectIntent(userInput: string): FluxiaResponse {
         openPage: config.openPage,
       };
     }
+  }
+
+  if (HELP_RE.test(trimmed) || HELP_RE.test(normalized)) {
+    return response(
+      'HELP',
+      `Posso te guiar pelo Fluxo: importar extrato, lançar gastos, orçamentos, relatórios, score e configurações.\n\n${SUGGESTIONS}`,
+    );
   }
 
   const unknownReplies = [

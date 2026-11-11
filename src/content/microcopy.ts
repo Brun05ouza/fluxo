@@ -25,7 +25,7 @@ export const emptyStates = {
   },
   import: {
     title: 'Nenhuma transação encontrada',
-    description: 'Verifique o formato do arquivo (CSV ou OFX) e tente novamente.',
+    description: 'Verifique o formato do arquivo (hoje só CSV é aceito) e tente novamente.',
     retryCta: 'Tentar outro arquivo',
   },
   importPreview: {

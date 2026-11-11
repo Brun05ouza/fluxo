@@ -1,5 +1,7 @@
 export type FluxiaIntent =
   | 'IMPORT_EXTRATO'
+  | 'PREPARAR_MES'
+  | 'VINCULAR'
   | 'NOVA_TRANSACAO'
   | 'CRIAR_ORCAMENTO'
   | 'VER_RELATORIOS'

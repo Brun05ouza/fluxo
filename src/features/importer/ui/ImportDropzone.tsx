@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Upload, FileSpreadsheet } from 'lucide-react';
 import { Card, Button, cn } from '@/app/components/ui';
 
-const ACCEPTED_EXT = ['.csv', '.ofx'];
+const ACCEPTED_EXT = ['.csv'];
 
 export interface ImportDropzoneProps {
   onFileSelect: (file: File) => void;
@@ -27,7 +27,7 @@ export const ImportDropzone = ({
   const validateFile = (file: File): string | null => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     if (!ACCEPTED_EXT.includes(ext)) {
-      return 'Arquivo inválido. Use CSV ou OFX.';
+      return 'Arquivo inválido. Use CSV.';
     }
     if (file.size > 10 * 1024 * 1024) {
       return 'Arquivo muito grande. Máximo 10MB.';
@@ -84,7 +84,7 @@ export const ImportDropzone = ({
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,.ofx,text/csv,application/vnd.ms-excel,application/x-ofx"
+          accept=".csv,text/csv,application/vnd.ms-excel"
           onChange={handleInputChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-0"
           disabled={disabled || loading}
@@ -105,7 +105,7 @@ export const ImportDropzone = ({
           </div>
           <p className="text-sm font-medium text-destructive">{error}</p>
           <p className="text-xs text-muted-foreground">
-            Tente outro arquivo ou formato CSV/OFX.
+            Tente outro arquivo CSV.
           </p>
           <Button
             variant="outline"
@@ -132,7 +132,7 @@ export const ImportDropzone = ({
           <div>
             <p className="font-semibold text-lg">Arraste e solte seu extrato aqui</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Ou clique para selecionar (CSV ou OFX)
+              Ou clique para selecionar (CSV)
             </p>
           </div>
           <Button

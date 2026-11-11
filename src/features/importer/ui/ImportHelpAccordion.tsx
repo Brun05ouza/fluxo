@@ -35,7 +35,7 @@ const BANKS = [
       'Vá em Conta Corrente → Extrato',
       'Selecione o período desejado',
       'Clique em "Exportar"',
-      'Escolha CSV ou OFX',
+      'Escolha o formato CSV (hoje o Fluxo só aceita CSV)',
     ],
   },
   {
@@ -45,7 +45,7 @@ const BANKS = [
       'Extrato de conta',
       'Selecione o período',
       'Exportar/Download',
-      'Salve em CSV ou OFX',
+      'Salve em CSV (hoje o Fluxo só aceita CSV)',
     ],
   },
   {
@@ -54,7 +54,7 @@ const BANKS = [
       'Procure no app ou site por "Extrato"',
       'Geralmente em Conta ou Movimentação',
       'Busque opções como "Exportar", "Download" ou "Salvar"',
-      'Formatos comuns: CSV, OFX, PDF (CSV/OFX funcionam melhor aqui)',
+      'Bancos podem oferecer CSV, OFX ou PDF — hoje o Fluxo só aceita CSV',
     ],
   },
 ];

@@ -742,7 +742,11 @@ export const Transactions = ({ onAddTransaction, onGoToImport, onGuideClick }: T
       <Dialog open={!!linkForecast} onOpenChange={(open)=>{if(!open && !linkBusy)setLinkForecast(null);}}>
         <DialogContent className="rounded-2xl border-border bg-card">
           <DialogHeader><DialogTitle>Vincular lançamento existente</DialogTitle><DialogDescription>A previsão de {linkForecast?.title} será substituída pelo lançamento escolhido. O valor e o status real desse lançamento serão preservados.</DialogDescription></DialogHeader>
-          <Select value={linkTarget} onValueChange={setLinkTarget}><SelectTrigger><SelectValue placeholder="Escolha o lançamento já registrado" /></SelectTrigger><SelectContent>{transactions.filter(t=>linkForecast && !t.planning_item_id && !t.is_ignored && t.settlement_status !== 'ignored' && Math.sign(t.amount)===Math.sign(linkForecast.amount) && (t.competency_date||t.date).slice(0,7)===(linkForecast.competency_date||linkForecast.date).slice(0,7)).map(t=><SelectItem key={t.id} value={t.id}>{t.title} · {formatCurrencyBRL(Math.abs(t.amount))} · {formatTableDate(t.date)}</SelectItem>)}</SelectContent></Select>
+          {(() => {
+            const linkCandidates = transactions.filter(t=>linkForecast && !t.planning_item_id && !t.is_ignored && t.settlement_status !== 'ignored' && Math.sign(t.amount)===Math.sign(linkForecast.amount) && (t.competency_date||t.date).slice(0,7)===(linkForecast.competency_date||linkForecast.date).slice(0,7));
+            if (linkCandidates.length === 0) return <p className="text-sm text-muted-foreground">Nenhum lançamento compatível neste mês.</p>;
+            return <Select value={linkTarget} onValueChange={setLinkTarget}><SelectTrigger><SelectValue placeholder="Escolha o lançamento já registrado" /></SelectTrigger><SelectContent>{linkCandidates.map(t=><SelectItem key={t.id} value={t.id}>{t.title} · {formatCurrencyBRL(Math.abs(t.amount))} · {formatTableDate(t.date)}</SelectItem>)}</SelectContent></Select>;
+          })()}
           <DialogFooter><Button variant="ghost" disabled={linkBusy} onClick={()=>setLinkForecast(null)}>Cancelar</Button><Button disabled={!linkTarget} loading={linkBusy} onClick={async()=>{
             if(!linkForecast?.planning_item_id)return;
             setLinkBusy(true);

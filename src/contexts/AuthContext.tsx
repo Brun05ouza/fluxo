@@ -5,7 +5,7 @@ export interface AppUser {
   id: string;
   email: string;
   created_at: string;
-  user_metadata: { full_name: string; cpf: string; avatar_url?: string };
+  user_metadata: { full_name: string; cpf?: string; avatar_url?: string };
   app_metadata: { provider: string };
 }
 type Result = { error: Error | null };
@@ -15,7 +15,7 @@ interface AuthContextType {
   error: string | null;
   signIn: (email: string, password: string) => Promise<Result>;
   signInWithGoogle: () => Promise<Result>;
-  signUp: (email: string, password: string, metadata?: { fullName: string; cpf: string }) => Promise<Result>;
+  signUp: (email: string, password: string, metadata?: { fullName: string }) => Promise<Result>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<Result>;
   updateProfile: (data: { fullName?: string; avatarUrl?: string }) => Promise<Result>;
@@ -43,19 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     void (async () => {
       try {
-        const pendingKey = `fluxo-signup:${identity.email.toLowerCase()}`;
-        const cpf = sessionStorage.getItem(pendingKey);
-        if (cpf && identity.emailVerified) {
-          const result = await neon.from('users').update({ cpf }).eq('id', identity.id);
-          if (result.error) throw result.error;
-          sessionStorage.removeItem(pendingKey);
-        }
         const { data, error: dbError } = await neon.from('users').select('*').eq('id', identity.id).single();
         if (dbError) throw dbError;
         if (active) setUser({
           id: identity.id, email: identity.email,
           created_at: data.created_at,
-          user_metadata: { full_name: data.nome || identity.name, cpf: data.cpf, avatar_url: data.avatar_url || identity.image || undefined },
+          user_metadata: { full_name: data.nome || identity.name, cpf: data.cpf || undefined, avatar_url: data.avatar_url || identity.image || undefined },
           app_metadata: { provider: 'email' },
         });
       } catch (e) { if (active) { setUser(null); setError(e instanceof Error ? e.message : 'Não foi possível carregar seu perfil.'); } }
@@ -66,12 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = (email: string, password: string) => authResult(() => neon.auth.signIn.email({ email, password }));
   const signInWithGoogle = () => authResult(() => neon.auth.signIn.social({ provider: 'google', callbackURL: `${window.location.origin}/` }));
-  const signUp = async (email: string, password: string, metadata?: { fullName: string; cpf: string }) => {
-    const pendingKey = `fluxo-signup:${email.toLowerCase()}`;
-    if (metadata?.cpf) sessionStorage.setItem(pendingKey, metadata.cpf);
-    const result = await authResult(() => neon.auth.signUp.email({ email, password, name: metadata?.fullName || email }));
-    if (result.error) sessionStorage.removeItem(pendingKey);
-    return result;
+  const signUp = async (email: string, password: string, metadata?: { fullName: string }) => {
+    return authResult(() => neon.auth.signUp.email({ email, password, name: metadata?.fullName || email }));
   };
   const signOut = async () => {
     const result = await authResult(() => neon.auth.signOut());
